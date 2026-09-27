@@ -16,9 +16,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,7 +47,7 @@ private enum class PomodoroPhase {
 }
 
 @Composable
-fun PomodoroScreen(subject: String) {
+fun PomodoroScreen(subject: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val vibrator = remember(context) {
         context.getSystemService(Vibrator::class.java)
@@ -118,11 +122,22 @@ fun PomodoroScreen(subject: String) {
             .padding(MaterialTheme.spacing.large),
         verticalArrangement = Arrangement.Top
     ) {
-        Text(
-            text = subject,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back)
+                )
+            }
+
+            Text(
+                text = subject,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
