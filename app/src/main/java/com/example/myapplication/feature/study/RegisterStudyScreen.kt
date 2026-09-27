@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.stringResource
+import com.example.myapplication.R
 import com.example.myapplication.ui.theme.spacing
 
 @Composable
@@ -48,7 +50,7 @@ fun RegisterStudyScreen(
         verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = "Registrar estudo",
+            text = stringResource(R.string.register_study),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -58,7 +60,7 @@ fun RegisterStudyScreen(
         )
 
         Text(
-            text = "Registre o que você estudou hoje.",
+            text = stringResource(R.string.register_study_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -68,7 +70,7 @@ fun RegisterStudyScreen(
         )
 
         Text(
-            text = "O que você estudou?",
+            text = stringResource(R.string.study_prompt),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -84,7 +86,7 @@ fun RegisterStudyScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
-                Text("Ex: Java Streams")
+                Text(stringResource(R.string.subject_example))
             },
             singleLine = true
         )
@@ -94,7 +96,7 @@ fun RegisterStudyScreen(
         )
 
         Text(
-            text = "O que você aprendeu?",
+            text = stringResource(R.string.learning_prompt),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -110,7 +112,7 @@ fun RegisterStudyScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
-                Text("Escreva um breve resumo...")
+                Text(stringResource(R.string.notes_example))
             },
             minLines = 4
         )
@@ -120,7 +122,7 @@ fun RegisterStudyScreen(
         )
 
         Text(
-            text = "Tempo de estudo",
+            text = stringResource(R.string.study_time),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -136,7 +138,7 @@ fun RegisterStudyScreen(
             },
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
-                Text("Ex: 90 minutos")
+                Text(stringResource(R.string.duration_example))
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -152,7 +154,7 @@ fun RegisterStudyScreen(
             onClick = onRegisterStudy,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Registrar estudo")
+            Text(stringResource(R.string.register_study))
         }
     }
 }
