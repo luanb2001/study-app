@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -89,8 +91,8 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     val sessionCounts = remember(entries, selectedYear) {
         entries
             .filter { it.date.year == selectedYear }
-            .groupingBy { it.date }
-            .eachCount()
+            .groupBy { it.date }
+            .mapValues { (_, dayEntries) -> dayEntries.sumOf { it.sessionCount } }
     }
     val contributionCount = sessionCounts.values.sum()
 
@@ -106,57 +108,78 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Row(
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = stringResource(
-                    R.string.profile_contributions_in_year,
-                    contributionCount,
-                    selectedYear
-                ),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f)
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
             )
-            Row {
-                IconButton(
-                    onClick = { selectedYear -= 1 },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronLeft,
-                        contentDescription = stringResource(R.string.profile_previous_year)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.large),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = contributionCount.toString(),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_contributions_in_year_label, selectedYear),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(
-                    onClick = { selectedYear += 1 },
-                    enabled = selectedYear < today.year,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = stringResource(R.string.profile_next_year)
-                    )
+                Row {
+                    IconButton(
+                        onClick = { selectedYear -= 1 },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronLeft,
+                            contentDescription = stringResource(R.string.profile_previous_year)
+                        )
+                    }
+                    IconButton(
+                        onClick = { selectedYear += 1 },
+                        enabled = selectedYear < today.year,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = stringResource(R.string.profile_next_year)
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    1.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(8.dp)
-                )
-                .padding(MaterialTheme.spacing.medium)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
+          Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
+            Text(
+                text = stringResource(R.string.profile_activity_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+            Text(
+                text = stringResource(R.string.profile_activity_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             Row(verticalAlignment = Alignment.Top) {
                 Column(
                     modifier = Modifier.padding(top = 16.dp, end = 6.dp),
@@ -273,6 +296,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+          }
         }
     }
 }

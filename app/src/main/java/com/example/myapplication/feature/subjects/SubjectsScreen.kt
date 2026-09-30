@@ -10,16 +10,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,7 +72,9 @@ private data class SubjectListItem(
 fun SubjectsScreen(
     modifier: Modifier = Modifier,
     onOpenSubject: (String) -> Unit,
-    onRegisterStudy: () -> Unit
+    onStartStudy: () -> Unit,
+    onRegisterStudy: () -> Unit,
+    onScheduleStudy: () -> Unit
 ) {
     var groupingName by rememberSaveable { mutableStateOf(StudyGrouping.DAY.name) }
     val grouping = StudyGrouping.valueOf(groupingName)
@@ -87,7 +96,7 @@ fun SubjectsScreen(
                             periodKey = periodStart.toString(),
                             periodTitle = periodTitle(periodStart, grouping, locale),
                             subject = subject,
-                            sessionCount = subjectEntries.size,
+                            sessionCount = subjectEntries.sumOf { it.sessionCount },
                             totalMinutes = subjectEntries.sumOf { it.durationMinutes }
                         )
                     }
@@ -133,14 +142,81 @@ fun SubjectsScreen(
         }
 
         item {
-            Button(
-                onClick = onRegisterStudy,
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = MaterialTheme.spacing.small)
+                    .padding(top = MaterialTheme.spacing.medium),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                )
             ) {
-                Text(stringResource(R.string.register_study))
+                Column(
+                    modifier = Modifier.padding(MaterialTheme.spacing.large)
+                ) {
+                    Text(
+                        text = stringResource(R.string.subjects_study_actions_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+                    Text(
+                        text = stringResource(R.string.subjects_study_actions_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    Button(
+                        onClick = onStartStudy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                        Text(stringResource(R.string.start_study))
+                    }
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        OutlinedButton(
+                            onClick = onRegisterStudy,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
+                            Text(stringResource(R.string.register_study_short), maxLines = 1)
+                        }
+                        OutlinedButton(
+                            onClick = onScheduleStudy,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
+                            Text(stringResource(R.string.schedule_study_short), maxLines = 1)
+                        }
+                    }
+                }
             }
+        }
+
+        item {
+            Text(
+                text = stringResource(R.string.subjects_history_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = MaterialTheme.spacing.large)
+            )
         }
 
         item {

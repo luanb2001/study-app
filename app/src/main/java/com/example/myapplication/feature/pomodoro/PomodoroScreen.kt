@@ -20,6 +20,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -47,19 +49,31 @@ private enum class PomodoroPhase {
 }
 
 @Composable
-fun PomodoroScreen(subject: String, onBack: () -> Unit) {
+fun PomodoroScreen(
+    subject: String,
+    initialStudyMinutes: Int = 25,
+    initialBreakMinutes: Int = 5,
+    initialSessionCount: Int = 4,
+    startImmediately: Boolean = false,
+    onCompleted: (durationMinutes: Int, sessions: Int, summary: String) -> Unit = { _, _, _ -> },
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val vibrator = remember(context) {
         context.getSystemService(Vibrator::class.java)
     }
-    var studyMinutes by rememberSaveable { mutableStateOf(25) }
-    var breakMinutes by rememberSaveable { mutableStateOf(5) }
-    var sessionCount by rememberSaveable { mutableStateOf(4) }
+    var studyMinutes by rememberSaveable { mutableStateOf(initialStudyMinutes) }
+    var breakMinutes by rememberSaveable { mutableStateOf(initialBreakMinutes) }
+    var sessionCount by rememberSaveable { mutableStateOf(initialSessionCount) }
 
     var phase by rememberSaveable { mutableStateOf(PomodoroPhase.STUDY) }
     var currentSession by rememberSaveable { mutableIntStateOf(1) }
-    var remainingSeconds by rememberSaveable { mutableIntStateOf(studyMinutes * 60) }
-    var isRunning by rememberSaveable { mutableStateOf(false) }
+    var remainingSeconds by rememberSaveable { mutableIntStateOf(initialStudyMinutes * 60) }
+    var isRunning by rememberSaveable { mutableStateOf(startImmediately) }
+    var completedStudyMinutes by rememberSaveable { mutableIntStateOf(0) }
+    var completedSessionCount by rememberSaveable { mutableIntStateOf(0) }
+    var summary by rememberSaveable { mutableStateOf("") }
+    var studyFinalized by rememberSaveable { mutableStateOf(false) }
 
     val totalStudySeconds = studyMinutes * 60
     val totalBreakSeconds = breakMinutes * 60
@@ -78,6 +92,8 @@ fun PomodoroScreen(subject: String, onBack: () -> Unit) {
 
         if (remainingSeconds == 0) {
             if (phase == PomodoroPhase.STUDY) {
+                completedStudyMinutes += studyMinutes
+                completedSessionCount += 1
                 if (currentSession >= sessionCount) {
                     phase = PomodoroPhase.COMPLETED
                     isRunning = false
@@ -96,6 +112,15 @@ fun PomodoroScreen(subject: String, onBack: () -> Unit) {
                     remainingSeconds = totalBreakSeconds
                 }
             } else {
+                if (vibrator != null) {
+                    vibrator.vibrate(
+                        VibrationEffect.createWaveform(
+                            longArrayOf(0, 150, 130, 150, 130, 150),
+                            -1
+                        )
+                    )
+                    delay(710L)
+                }
                 phase = PomodoroPhase.STUDY
                 remainingSeconds = totalStudySeconds
             }
@@ -107,6 +132,9 @@ fun PomodoroScreen(subject: String, onBack: () -> Unit) {
         phase = PomodoroPhase.STUDY
         currentSession = 1
         remainingSeconds = totalStudySeconds
+        completedStudyMinutes = 0
+        completedSessionCount = 0
+        summary = ""
     }
 
     val phaseLabel = when (phase) {
@@ -139,131 +167,218 @@ fun PomodoroScreen(subject: String, onBack: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(MaterialTheme.spacing.large),
-                horizontalAlignment = Alignment.CenterHorizontally
+        if (phase == PomodoroPhase.COMPLETED) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Text(
-                    text = phaseLabel,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-                Text(
-                    text = stringResource(
-                        R.string.pomodoro_time_format,
-                        remainingSeconds / 60,
-                        remainingSeconds % 60
-                    ),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-                Text(
-                    text = stringResource(
-                        R.string.pomodoro_session_count,
-                        currentSession,
-                        sessionCount
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                Column(
+                    modifier = Modifier.padding(MaterialTheme.spacing.large),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Text(
+                        text = stringResource(R.string.study_finished),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    Text(
+                        text = stringResource(
+                            R.string.study_finished_duration,
+                            completedStudyMinutes
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
                     Button(
                         onClick = {
-                            if (phase != PomodoroPhase.COMPLETED) {
-                                isRunning = !isRunning
+                            phase = PomodoroPhase.STUDY
+                            currentSession = 1
+                            remainingSeconds = totalStudySeconds
+                            isRunning = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.add_more_sessions))
+                    }
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    OutlinedTextField(
+                        value = summary,
+                        onValueChange = { summary = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.study_summary)) },
+                        placeholder = { Text(stringResource(R.string.study_summary_hint)) },
+                        minLines = 3
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    Button(
+                        onClick = {
+                            if (!studyFinalized) {
+                                onCompleted(
+                                    completedStudyMinutes,
+                                    completedSessionCount,
+                                    summary.trim()
+                                )
+                                studyFinalized = true
                             }
                         },
-                        modifier = Modifier.weight(1f)
+                        enabled = !studyFinalized,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(if (isRunning) R.string.pause else R.string.start))
-                    }
-
-                    Button(
-                        onClick = { resetPomodoro() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.reset))
+                        Text(
+                            stringResource(
+                                if (studyFinalized) R.string.study_finalized else R.string.finish_study
+                            )
+                        )
                     }
                 }
             }
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        color = if (phase == PomodoroPhase.BREAK) {
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        },
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Text(
+                            text = phaseLabel,
+                            modifier = Modifier.padding(
+                                horizontal = MaterialTheme.spacing.large,
+                                vertical = MaterialTheme.spacing.small
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (phase == PomodoroPhase.BREAK) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                    Text(
+                        text = stringResource(
+                            R.string.pomodoro_time_format,
+                            remainingSeconds / 60,
+                            remainingSeconds % 60
+                        ),
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                    Text(
+                        text = stringResource(
+                            R.string.pomodoro_session_count,
+                            currentSession,
+                            sessionCount
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        Button(
+                            onClick = { isRunning = !isRunning },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(if (isRunning) R.string.pause else R.string.start))
+                        }
+
+                        OutlinedButton(
+                            onClick = { resetPomodoro() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.reset))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
+                    Text(
+                        text = stringResource(R.string.configuration),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        OutlinedTextField(
+                            value = studyMinutes.toString(),
+                            onValueChange = { newValue ->
+                                val parsed = newValue.toIntOrNull() ?: 0
+                                if (parsed > 0) {
+                                    studyMinutes = parsed
+                                    if (!isRunning && phase == PomodoroPhase.STUDY) {
+                                        remainingSeconds = parsed * 60
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            label = { Text(stringResource(R.string.study_duration_short)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        OutlinedTextField(
+                            value = breakMinutes.toString(),
+                            onValueChange = { newValue ->
+                                val parsed = newValue.toIntOrNull() ?: 0
+                                if (parsed > 0) {
+                                    breakMinutes = parsed
+                                    if (!isRunning && phase == PomodoroPhase.BREAK) {
+                                        remainingSeconds = parsed * 60
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            label = { Text(stringResource(R.string.break_duration_short)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    OutlinedTextField(
+                        value = sessionCount.toString(),
+                        onValueChange = { newValue ->
+                            val parsed = newValue.toIntOrNull() ?: 1
+                            sessionCount = if (parsed > 0) parsed else 1
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.number_of_sessions)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
+            }
         }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-        Text(
-            text = stringResource(R.string.configuration),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        OutlinedTextField(
-            value = studyMinutes.toString(),
-            onValueChange = { newValue ->
-                val parsed = newValue.toIntOrNull() ?: 0
-                if (parsed > 0) {
-                    studyMinutes = parsed
-                    if (!isRunning && phase == PomodoroPhase.STUDY) {
-                        remainingSeconds = parsed * 60
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.study_duration)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        OutlinedTextField(
-            value = breakMinutes.toString(),
-            onValueChange = { newValue ->
-                val parsed = newValue.toIntOrNull() ?: 0
-                if (parsed > 0) {
-                    breakMinutes = parsed
-                    if (!isRunning && phase == PomodoroPhase.BREAK) {
-                        remainingSeconds = parsed * 60
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.break_duration)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        OutlinedTextField(
-            value = sessionCount.toString(),
-            onValueChange = { newValue ->
-                val parsed = newValue.toIntOrNull() ?: 1
-                sessionCount = if (parsed > 0) parsed else 1
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.number_of_sessions)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
     }
 }

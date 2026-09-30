@@ -7,7 +7,16 @@ data class StudyEntry(
     val date: LocalDate,
     val subject: String,
     val description: String,
-    val durationMinutes: Int
+    val durationMinutes: Int,
+    val sessionCount: Int = 1
+)
+
+data class ScheduledStudy(
+    val date: LocalDate,
+    val subject: String,
+    val sessionCount: Int,
+    val studyMinutes: Int,
+    val breakMinutes: Int
 )
 
 object StudyRepository {
@@ -93,13 +102,20 @@ object StudyRepository {
             }
         }
     }
+    private val scheduledStudies = mutableStateListOf<ScheduledStudy>()
 
     fun all(): List<StudyEntry> = studyEntries.toList()
+
+    fun scheduled(): List<ScheduledStudy> = scheduledStudies.toList()
 
     fun forSubject(subject: String): List<StudyEntry> =
         studyEntries.filter { it.subject.equals(subject, ignoreCase = true) }
 
     fun add(entry: StudyEntry) {
         studyEntries.add(0, entry)
+    }
+
+    fun schedule(study: ScheduledStudy) {
+        scheduledStudies.add(study)
     }
 }

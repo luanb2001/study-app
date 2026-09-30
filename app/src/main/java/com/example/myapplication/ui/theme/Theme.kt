@@ -23,7 +23,7 @@ private val LightColorScheme = lightColorScheme(
     onBackground = Charcoal,
     surface = SoftGrey,                  // SoftGrey -> cards/superfícies secundárias
     onSurface = Charcoal,
-    surfaceVariant = OffWhite,
+    surfaceVariant = SoftSurfaceVariant,
     onSurfaceVariant = SubtleGrey,
     outline = BorderGrey                 // BorderGrey -> bordas/divisores
 )

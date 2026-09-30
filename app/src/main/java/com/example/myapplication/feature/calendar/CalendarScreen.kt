@@ -2,6 +2,13 @@ package com.example.myapplication.feature.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,12 +44,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.study.StudyEntry
+import com.example.myapplication.feature.study.ScheduledStudy
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -46,7 +60,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun CalendarScreen(modifier: Modifier = Modifier) {
+fun CalendarScreen(
+    modifier: Modifier = Modifier,
+    onScheduleStudy: () -> Unit = {}
+) {
     val today = LocalDate.now()
     var displayedMonthValue by rememberSaveable {
         mutableStateOf(today.withDayOfMonth(1).toString())
@@ -56,9 +73,8 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
     var selectedDateValue by rememberSaveable { mutableStateOf(today.toString()) }
     val selectedDate = LocalDate.parse(selectedDateValue)
     val locale = Locale.forLanguageTag("pt-BR")
-    val monthTitle = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
-        .replaceFirstChar { it.titlecase(locale) }
     val studyRecords = StudyRepository.all().groupBy { it.date }
+    val scheduledRecords = StudyRepository.scheduled().groupBy { it.date }
     val weekdays = listOf(
         stringResource(R.string.calendar_weekday_monday),
         stringResource(R.string.calendar_weekday_tuesday),
@@ -68,8 +84,13 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
         stringResource(R.string.calendar_weekday_saturday),
         stringResource(R.string.calendar_weekday_sunday)
     )
-    val leadingDays = month.dayOfWeek.value - DayOfWeek.MONDAY.value
-    val weekCount = (leadingDays + month.lengthOfMonth() + 6) / 7
+    val changeMonth: (Long) -> Unit = { monthOffset ->
+        val updatedMonth = month.plusMonths(monthOffset)
+        displayedMonthValue = updatedMonth.toString()
+        selectedDateValue = updatedMonth
+            .withDayOfMonth(minOf(selectedDate.dayOfMonth, updatedMonth.lengthOfMonth()))
+            .toString()
+    }
 
     Column(
         modifier = modifier
@@ -77,134 +98,215 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
             .verticalScroll(rememberScrollState())
             .padding(MaterialTheme.spacing.large)
     ) {
-        Text(
-            text = stringResource(R.string.calendar_study_entries),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = {
-                val previousMonth = month.minusMonths(1)
-                displayedMonthValue = previousMonth.toString()
-                selectedDateValue = previousMonth
-                    .withDayOfMonth(minOf(selectedDate.dayOfMonth, previousMonth.lengthOfMonth()))
-                    .toString()
-            }) {
-                Icon(
-                    imageVector = Icons.Default.ChevronLeft,
-                    contentDescription = stringResource(R.string.calendar_previous_month)
-                )
-            }
             Text(
-                text = monthTitle,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                text = stringResource(R.string.calendar_study_entries),
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            IconButton(onClick = {
-                val nextMonth = month.plusMonths(1)
-                displayedMonthValue = nextMonth.toString()
-                selectedDateValue = nextMonth
-                    .withDayOfMonth(minOf(selectedDate.dayOfMonth, nextMonth.lengthOfMonth()))
-                    .toString()
-            }) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = stringResource(R.string.calendar_next_month)
-                )
+            OutlinedButton(onClick = onScheduleStudy) {
+                Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null)
+                Text(stringResource(R.string.schedule_study_short))
             }
-        }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            weekdays.forEach { weekday ->
-                Text(
-                    text = weekday,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-        repeat(weekCount) { week ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                repeat(7) { weekday ->
-                    val dayNumber = week * 7 + weekday - leadingDays + 1
-                    if (dayNumber in 1..month.lengthOfMonth()) {
-                        CalendarDay(
-                            day = dayNumber,
-                            studies = studyRecords[month.withDayOfMonth(dayNumber)].orEmpty(),
-                            isToday = month.withDayOfMonth(dayNumber) == today,
-                            isSelected = month.withDayOfMonth(dayNumber) == selectedDate,
-                            onClick = {
-                                selectedDateValue = month.withDayOfMonth(dayNumber).toString()
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f).height(76.dp))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
         }
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-        Text(
-            text = stringResource(
-                R.string.calendar_selected_day,
-                selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", locale))
-            ),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
 
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-        val selectedStudies = studyRecords[selectedDate].orEmpty()
-        if (selectedStudies.isEmpty()) {
-            Text(
-                text = stringResource(R.string.calendar_no_studies),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
-            selectedStudies.forEach { study ->
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = MaterialTheme.spacing.extraSmall),
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    IconButton(onClick = { changeMonth(-1) }) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronLeft,
+                            contentDescription = stringResource(R.string.calendar_previous_month)
+                        )
+                    }
                     Text(
-                        text = study.subject,
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
+                            .replaceFirstChar { it.titlecase(locale) },
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    IconButton(onClick = { changeMonth(1) }) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = stringResource(R.string.calendar_next_month)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                Column(
+                    modifier = Modifier.pointerInput(month, selectedDate) {
+                        var horizontalDrag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { horizontalDrag = 0f },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                horizontalDrag += dragAmount
+                            },
+                            onDragEnd = {
+                                when {
+                                    horizontalDrag > 80f -> changeMonth(-1)
+                                    horizontalDrag < -80f -> changeMonth(1)
+                                }
+                            }
+                        )
+                    }
+                ) {
+                    AnimatedContent(
+                        targetState = month,
+                        transitionSpec = {
+                            val enter = if (targetState.isAfter(initialState)) {
+                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(180))
+                            } else {
+                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(180))
+                            }
+                            val exit = if (targetState.isAfter(initialState)) {
+                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(180))
+                            } else {
+                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(180))
+                            }
+                            ContentTransform(enter, exit, sizeTransform = null)
+                        },
+                        label = "calendar_month_grid"
+                    ) { animatedMonth ->
+                        val animatedLeadingDays =
+                            animatedMonth.dayOfWeek.value - DayOfWeek.MONDAY.value
+                        val animatedWeekCount =
+                            (animatedLeadingDays + animatedMonth.lengthOfMonth() + 6) / 7
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                weekdays.forEach { weekday ->
+                                    Text(
+                                        text = weekday,
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                            repeat(animatedWeekCount) { week ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    repeat(7) { weekday ->
+                                        val dayNumber =
+                                            week * 7 + weekday - animatedLeadingDays + 1
+                                        if (dayNumber in 1..animatedMonth.lengthOfMonth()) {
+                                            CalendarDay(
+                                                day = dayNumber,
+                                                studies = studyRecords[
+                                                    animatedMonth.withDayOfMonth(dayNumber)
+                                                ].orEmpty(),
+                                                scheduledStudies = scheduledRecords[
+                                                    animatedMonth.withDayOfMonth(dayNumber)
+                                                ].orEmpty(),
+                                                isToday = animatedMonth.withDayOfMonth(dayNumber) == today,
+                                                isSelected = animatedMonth.withDayOfMonth(dayNumber) == selectedDate,
+                                                onClick = {
+                                                    selectedDateValue =
+                                                        animatedMonth.withDayOfMonth(dayNumber).toString()
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        } else {
+                                            Spacer(modifier = Modifier.weight(1f).height(76.dp))
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
+                Text(
+                    text = stringResource(
+                        R.string.calendar_selected_day,
+                        selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", locale))
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+                val selectedStudies = studyRecords[selectedDate].orEmpty()
+                if (selectedStudies.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.calendar_study_duration, study.durationMinutes),
+                        text = stringResource(R.string.calendar_no_studies),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                } else {
+                    selectedStudies.forEach { study ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = MaterialTheme.spacing.extraSmall),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = study.subject,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.calendar_study_duration,
+                                    study.durationMinutes
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                val selectedSchedules = scheduledRecords[selectedDate].orEmpty()
+                if (selectedSchedules.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    Text(
+                        text = stringResource(R.string.scheduled_studies),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+                    selectedSchedules.forEach { scheduledStudy ->
+                        ScheduledStudyRow(scheduledStudy)
+                    }
                 }
             }
         }
@@ -236,6 +338,7 @@ fun CalendarScreen(modifier: Modifier = Modifier) {
 private fun CalendarDay(
     day: Int,
     studies: List<StudyEntry>,
+    scheduledStudies: List<ScheduledStudy>,
     isToday: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -253,6 +356,7 @@ private fun CalendarDay(
             .background(
                 color = when {
                     isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                    scheduledStudies.isNotEmpty() -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
                     studies.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     else -> MaterialTheme.colorScheme.surface
                 },
@@ -289,20 +393,54 @@ private fun CalendarDay(
             }
         )
 
-        if (studies.isNotEmpty()) {
+        if (studies.isNotEmpty() || scheduledStudies.isNotEmpty()) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = if (studies.size > 1) {
+                text = if (scheduledStudies.isNotEmpty()) {
+                    stringResource(R.string.scheduled_day_marker, scheduledStudies.first().subject)
+                } else if (studies.size > 1) {
                     "${studies.first().subject} +${studies.size - 1}"
                 } else {
                     studies.first().subject
                 },
-                color = MaterialTheme.colorScheme.primary,
+                color = if (scheduledStudies.isNotEmpty()) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
                 fontSize = 10.sp,
                 lineHeight = 11.sp,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScheduledStudyRow(study: ScheduledStudy) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = MaterialTheme.spacing.extraSmall),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = study.subject,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            Text(
+                text = stringResource(
+                    R.string.scheduled_study_settings,
+                    study.sessionCount,
+                    study.studyMinutes,
+                    study.breakMinutes
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -34,7 +34,9 @@ import java.util.Locale
 fun SubjectDetailScreen(
     subject: String,
     onBack: () -> Unit,
+    onStartStudy: () -> Unit,
     onRegisterStudy: () -> Unit,
+    onScheduleStudy: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val entries = StudyRepository.forSubject(subject).sortedByDescending { it.date }
@@ -92,7 +94,11 @@ fun SubjectDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
                     Text(
-                        text = stringResource(R.string.calendar_study_duration, entry.durationMinutes),
+                        text = stringResource(
+                            R.string.study_entry_sessions_and_duration,
+                            entry.sessionCount,
+                            entry.durationMinutes
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -104,10 +110,28 @@ fun SubjectDetailScreen(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
         Button(
+            onClick = onStartStudy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.start_study))
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+        Button(
             onClick = onRegisterStudy,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.register_study))
+            Text(stringResource(R.string.register_studied_subject))
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+        Button(
+            onClick = onScheduleStudy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.schedule_study))
         }
     }
 }

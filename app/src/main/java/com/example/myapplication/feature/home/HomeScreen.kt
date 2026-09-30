@@ -15,13 +15,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,7 +45,8 @@ import com.example.myapplication.ui.theme.spacing
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    onRegisterStudy: () -> Unit = {},
+    onStartStudy: () -> Unit = {},
+    onScheduleStudy: () -> Unit = {},
     onStartPomodoro: (String) -> Unit = {}
 ) {
     Column(
@@ -71,7 +78,10 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
-        RegisterStudyCard(onRegisterStudy = onRegisterStudy)
+        StartStudyCard(
+            onStartStudy = onStartStudy,
+            onScheduleStudy = onScheduleStudy
+        )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
@@ -90,37 +100,39 @@ private fun TodayReviews(onStartPomodoro: (String) -> Unit) {
         Review("Spring Transactions", ReviewStatus.OVERDUE)
     )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.today_reviews),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        reviews.forEach { review ->
-            val isSelected = selectedReview == review.subject
-            ReviewItem(
-                subject = review.subject,
-                status = review.status,
-                isSelected = isSelected,
-                onClick = { selectedReview = review.subject }
-            )
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-        }
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.spacing.large)
         ) {
+            Text(
+                text = stringResource(R.string.today_reviews),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+            reviews.forEach { review ->
+                val isSelected = selectedReview == review.subject
+                ReviewItem(
+                    subject = review.subject,
+                    status = review.status,
+                    isSelected = isSelected,
+                    onClick = { selectedReview = review.subject }
+                )
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            }
+
             Button(
                 enabled = selectedReview != null,
                 onClick = {
                     selectedReview?.let(onStartPomodoro)
-                }
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.start_review))
             }
@@ -161,13 +173,14 @@ private fun ReviewItem(
             .then(
                 if (isSelected) {
                     Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         shape = MaterialTheme.shapes.medium
                     )
                 } else {
                     Modifier
                 }
             ),
+            shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
@@ -222,14 +235,17 @@ private fun ReviewItem(
 }
 
 @Composable
-private fun RegisterStudyCard(onRegisterStudy: () -> Unit) {
+private fun StartStudyCard(
+    onStartStudy: () -> Unit,
+    onScheduleStudy: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
             Text(
-                text = stringResource(R.string.register_study_question),
+                text = stringResource(R.string.start_study_question),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -237,7 +253,7 @@ private fun RegisterStudyCard(onRegisterStudy: () -> Unit) {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
             Text(
-                text = stringResource(R.string.register_study_description),
+                text = stringResource(R.string.start_study_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -245,10 +261,21 @@ private fun RegisterStudyCard(onRegisterStudy: () -> Unit) {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
             Button(
-                onClick = onRegisterStudy,
+                onClick = onStartStudy,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.register_study))
+                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                Text(stringResource(R.string.start_study))
+            }
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            OutlinedButton(
+                onClick = onScheduleStudy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null)
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                Text(stringResource(R.string.schedule_study))
             }
         }
     }
@@ -260,18 +287,26 @@ private fun ProgressSummary() {
         Text(
             text = stringResource(R.string.progress),
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
-        Row(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            ProgressItem(value = "12", label = stringResource(R.string.streak_days), modifier = Modifier.weight(1f))
-            ProgressItem(value = "18h", label = stringResource(R.string.this_month), modifier = Modifier.weight(1f))
-            ProgressItem(value = "27", label = stringResource(R.string.subject_count), modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(MaterialTheme.spacing.small),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                ProgressItem(value = "12", label = stringResource(R.string.streak_days), modifier = Modifier.weight(1f))
+                ProgressItem(value = "18h", label = stringResource(R.string.this_month), modifier = Modifier.weight(1f))
+                ProgressItem(value = "27", label = stringResource(R.string.subject_count), modifier = Modifier.weight(1f))
+            }
         }
     }
 }
