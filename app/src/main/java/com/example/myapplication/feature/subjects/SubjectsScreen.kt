@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.StudyRepository
+import com.example.myapplication.ui.components.EmptyState
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -70,6 +71,7 @@ private data class SubjectListItem(
 
 @Composable
 fun SubjectsScreen(
+    studyRepository: StudyRepository,
     modifier: Modifier = Modifier,
     onOpenSubject: (String) -> Unit,
     onStartStudy: () -> Unit,
@@ -81,7 +83,7 @@ fun SubjectsScreen(
     var loadedCount by rememberSaveable { mutableIntStateOf(PAGE_SIZE) }
     val listState = rememberLazyListState()
     val locale = Locale.forLanguageTag("pt-BR")
-    val allEntries = StudyRepository.all()
+    val allEntries = studyRepository.all()
     val allItems = remember(allEntries, grouping) {
         allEntries
             .groupBy { periodStart(it.date, grouping) }
@@ -242,10 +244,7 @@ fun SubjectsScreen(
 
         if (visibleItems.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.subjects_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                EmptyState(R.string.subjects_empty)
             }
         } else {
             visibleGroups.forEach { (periodKey, items) ->

@@ -36,12 +36,13 @@ object Routes {
     const val START_STUDY = "start_study"
     const val REGISTER_STUDY = "register_study"
     const val SCHEDULE_STUDY = "schedule_study"
-    const val POMODORO = "pomodoro/{subject}?duration={duration}&breakDuration={breakDuration}&autoStart={autoStart}&sessions={sessions}"
+    const val POMODORO = "pomodoro/{subject}?duration={duration}&breakDuration={breakDuration}&autoStart={autoStart}&sessions={sessions}&isReview={isReview}"
 }
 
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    studyRepository: StudyRepository,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -63,6 +64,7 @@ fun AppNavigation(
     ) {
         composable(Routes.HOME) {
             HomeScreen(
+                studyRepository = studyRepository,
                 onStartStudy = {
                     navController.navigate(Routes.START_STUDY)
                 },
@@ -71,7 +73,7 @@ fun AppNavigation(
                 },
                 onStartPomodoro = { selectedSubject ->
                     navController.navigate(
-                        "pomodoro/${Uri.encode(selectedSubject)}?duration=25&autoStart=false&sessions=4"
+                        "pomodoro/${Uri.encode(selectedSubject)}?duration=25&autoStart=false&sessions=4&isReview=true"
                     )
                 }
             )
@@ -79,6 +81,9 @@ fun AppNavigation(
 
         composable(Routes.CALENDAR) {
             CalendarScreen(
+                studyRepository = studyRepository,
+                onDeleteStudy = studyRepository::deleteStudy,
+                onCancelScheduledStudy = studyRepository::cancelScheduledStudy,
                 onScheduleStudy = {
                     navController.navigate(Routes.SCHEDULE_STUDY)
                 }
@@ -86,11 +91,12 @@ fun AppNavigation(
         }
 
         composable(Routes.PROFILE) {
-            ProfileScreen()
+            ProfileScreen(studyRepository = studyRepository)
         }
 
         composable(Routes.SUBJECTS) {
             SubjectsScreen(
+                studyRepository = studyRepository,
                 onOpenSubject = { subject ->
                     navController.navigate("subject/${Uri.encode(subject)}")
                 },
@@ -113,6 +119,7 @@ fun AppNavigation(
             val subject = backStackEntry.arguments?.getString("subject").orEmpty()
             SubjectDetailScreen(
                 subject = subject,
+                studyRepository = studyRepository,
                 onBack = { navController.popBackStack() },
                 onStartStudy = {
                     navController.navigate(
@@ -124,6 +131,7 @@ fun AppNavigation(
                         "${Routes.REGISTER_STUDY}?subject=${Uri.encode(subject)}"
                     )
                 },
+                onDeleteStudy = studyRepository::deleteStudy,
                 onScheduleStudy = {
                     navController.navigate(
                         "${Routes.SCHEDULE_STUDY}?subject=${Uri.encode(subject)}"
@@ -145,7 +153,7 @@ fun AppNavigation(
                 initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
                 onBack = { navController.popBackStack() },
                 onRegisterStudy = { entry ->
-                    StudyRepository.add(entry)
+                    studyRepository.recordStudy(entry)
                     navController.popBackStack()
                 }
             )
@@ -161,10 +169,11 @@ fun AppNavigation(
             )
         ) { backStackEntry ->
             ScheduleStudyScreen(
+                studyRepository = studyRepository,
                 initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
                 onBack = { navController.popBackStack() },
                 onSchedule = { study ->
-                    StudyRepository.schedule(study)
+                    studyRepository.schedule(study)
                     navController.popBackStack()
                 }
             )
@@ -209,10 +218,15 @@ fun AppNavigation(
                 navArgument("sessions") {
                     type = NavType.IntType
                     defaultValue = 4
+                },
+                navArgument("isReview") {
+                    type = NavType.BoolType
+                    defaultValue = false
                 }
             )
         ) { backStackEntry ->
             val subject = backStackEntry.arguments?.getString("subject").orEmpty()
+            val isReview = backStackEntry.arguments?.getBoolean("isReview") ?: false
             PomodoroScreen(
                 subject = subject,
                 initialStudyMinutes = backStackEntry.arguments?.getInt("duration") ?: 25,
@@ -220,15 +234,20 @@ fun AppNavigation(
                 initialSessionCount = backStackEntry.arguments?.getInt("sessions") ?: 4,
                 startImmediately = backStackEntry.arguments?.getBoolean("autoStart") ?: false,
                 onCompleted = { durationMinutes, sessions, summary ->
-                    StudyRepository.add(
+                    studyRepository.recordStudy(
                         StudyEntry(
                             date = LocalDate.now(),
                             subject = subject,
                             description = summary,
                             durationMinutes = durationMinutes,
                             sessionCount = sessions
-                        )
+                        ),
+                        isReview = isReview
                     )
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )

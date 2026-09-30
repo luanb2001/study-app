@@ -1,5 +1,21 @@
 <resources>
     <string name="app_name">Study App</string>
+    <string name="onboarding_label">Conheça o Study App</string>
+    <string name="onboarding_skip">Pular</string>
+    <string name="onboarding_previous">Voltar</string>
+    <string name="onboarding_next">Próximo</string>
+    <string name="onboarding_start">Começar a usar</string>
+    <string name="onboarding_step_counter">Etapa %1$d de %2$d</string>
+    <string name="onboarding_step_subjects_title">Organize seus assuntos</string>
+    <string name="onboarding_step_subjects_description">Na aba Assuntos, inicie um estudo, registre o que já estudou ou consulte seu histórico por assunto.</string>
+    <string name="onboarding_step_focus_title">Estude com foco</string>
+    <string name="onboarding_step_focus_description">Escolha um assunto, ajuste o tempo de estudo e do intervalo e acompanhe suas sessões com o cronômetro Pomodoro.</string>
+    <string name="onboarding_step_reviews_title">Faça suas revisões</string>
+    <string name="onboarding_step_reviews_description">Ao concluir ou registrar um estudo, ele entra na fila de revisões: 1, 7, 21 e 60 dias após cada revisão concluída. No Início, veja as revisões do dia ou atrasadas e inicie um Pomodoro.</string>
+    <string name="onboarding_step_schedule_title">Planeje sua rotina</string>
+    <string name="onboarding_step_schedule_description">Agende os próximos estudos pelo Início ou pelo Calendário e veja seus compromissos nos dias escolhidos.</string>
+    <string name="onboarding_step_progress_title">Acompanhe seu progresso</string>
+    <string name="onboarding_step_progress_description">Consulte seus estudos no Calendário, explore o histórico em Assuntos e veja sua atividade anual no Perfil.</string>
     <string name="home_greeting">Olá! User</string>
     <string name="home_subtitle">Veja o que você precisa estudar hoje.</string>
     <string name="start_study_subtitle">Defina o assunto e as configurações do Pomodoro.</string>
@@ -7,6 +23,13 @@
     <string name="review_today">Revisar hoje</string>
     <string name="overdue">Atrasado</string>
     <string name="start_review">Começar revisão</string>
+    <string name="reviews_empty">Nenhuma revisão pendente. Registre ou conclua um estudo para agendar a primeira revisão.</string>
+    <string name="review_reminder_channel_name">Lembretes de revisão</string>
+    <string name="review_reminder_channel_description">Avisos diários às 7h sobre assuntos que precisam ser revisados.</string>
+    <string name="review_reminder_title">Lembretes de estudo</string>
+    <string name="study_reminder_message">%1$d revisões pendentes e %2$d estudos agendados para hoje ou atrasados.</string>
+    <string name="review_reminder_subject">Revisar: %1$s</string>
+    <string name="scheduled_reminder_subject">Agendado: %1$s</string>
     <string name="start_study_question">Pronto para estudar?</string>
     <string name="start_study_description">Escolha um assunto e defina o tempo da sessão Pomodoro.</string>
     <string name="start_study">Iniciar estudo</string>
@@ -15,6 +38,10 @@
     <string name="register_studied_subject">Registrar assunto estudado</string>
     <string name="register_studied_title">Registrar estudo realizado</string>
     <string name="register_study_short">Registrar</string>
+    <string name="delete">Apagar</string>
+    <string name="delete_study_title">Apagar estudo</string>
+    <string name="delete_study_confirmation">Este estudo será removido do seu histórico. Essa ação não pode ser desfeita.</string>
+    <string name="delete_study_accessibility">Apagar estudo de %1$s</string>
     <string name="total_study_duration">Tempo total estudado (min)</string>
     <string name="register_study_summary_hint">Descreva brevemente o que estudou ou aprendeu</string>
     <string name="schedule_study">Agendar estudo</string>
@@ -25,6 +52,11 @@
     <string name="select_existing_subject">Selecionar assunto existente</string>
     <string name="schedule_new_subject_hint">Selecione um assunto na seta ou digite para criar um novo.</string>
     <string name="scheduled_studies">Estudos agendados</string>
+    <string name="cancel_scheduled_study_title">Cancelar agendamento</string>
+    <string name="cancel_scheduled_study_confirmation">Este estudo agendado será removido do calendário. Essa ação não pode ser desfeita.</string>
+    <string name="cancel_schedule">Cancelar agendamento</string>
+    <string name="cancel_scheduled_study_accessibility">Cancelar agendamento de %1$s</string>
+    <string name="calendar_no_scheduled_studies">Nenhum estudo agendado neste dia.</string>
     <string name="scheduled_day_marker">Agendado: %1$s</string>
     <string name="scheduled_study_settings">%1$d sessão(ões) • %2$d min de estudo • %3$d min de intervalo</string>
     <string name="subjects_study_actions_title">Organize seus estudos</string>
@@ -35,8 +67,10 @@
     <string name="confirm">Confirmar</string>
     <string name="cancel">Cancelar</string>
     <string name="progress">Seu progresso</string>
+    <string name="progress_empty">Ainda não há estudos registrados para mostrar seu progresso. Comece uma sessão ou registre um estudo.</string>
     <string name="streak_days">dias seguidos</string>
     <string name="this_month">este mês</string>
+    <string name="study_hours_value">%1$dh</string>
     <string name="subject_count">assuntos</string>
     <string name="nav_home">Início</string>
     <string name="nav_calendar">Calendário</string>
@@ -91,7 +125,8 @@
     <string name="group_days">Dias</string>
     <string name="group_weeks">Semanas</string>
     <string name="group_months">Mês</string>
-    <string name="subjects_empty">Nenhum estudo registrado ainda.</string>
+    <string name="subjects_empty">Ainda não há estudos para mostrar. Comece uma sessão ou registre um estudo para criar seu histórico.</string>
+    <string name="subject_history_empty">Ainda não há registros para este assunto. Quando você estudar ou registrar uma sessão, ela aparecerá aqui.</string>
     <string name="subject_session_count">%1$d sessão(ões)</string>
     <string name="subject_description_title">O que você aprendeu</string>
     <string name="subject_no_description">Nenhuma descrição registrada.</string>
@@ -108,6 +143,11 @@
     <string name="profile_contributions_in_year_label">sessões concluídas em %1$d</string>
     <string name="profile_activity_title">Sua atividade</string>
     <string name="profile_activity_description">Cada quadrado representa um dia. Tons mais fortes indicam mais sessões.</string>
+    <string name="profile_activity_empty">Ainda não há estudos registrados em %1$d para mostrar sua atividade.</string>
     <string name="profile_less">Menos</string>
     <string name="profile_more">Mais</string>
+    <plurals name="review_reminder_message">
+        <item quantity="one">%1$d assunto precisa de revisão.</item>
+        <item quantity="other">%1$d assuntos precisam de revisão.</item>
+    </plurals>
 </resources>

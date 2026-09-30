@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,9 +53,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
-import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.ScheduledStudy
+import com.example.myapplication.feature.study.StudyRepository
+import com.example.myapplication.ui.components.ConfirmActionDialog
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -61,8 +65,11 @@ import java.util.Locale
 
 @Composable
 fun CalendarScreen(
+    studyRepository: StudyRepository,
     modifier: Modifier = Modifier,
-    onScheduleStudy: () -> Unit = {}
+    onScheduleStudy: () -> Unit = {},
+    onDeleteStudy: (StudyEntry) -> Unit,
+    onCancelScheduledStudy: (ScheduledStudy) -> Unit
 ) {
     val today = LocalDate.now()
     var displayedMonthValue by rememberSaveable {
@@ -71,10 +78,14 @@ fun CalendarScreen(
     val month = LocalDate.parse(displayedMonthValue)
     val currentMonth = today.withDayOfMonth(1)
     var selectedDateValue by rememberSaveable { mutableStateOf(today.toString()) }
+    var studyPendingDeletion by remember { mutableStateOf<StudyEntry?>(null) }
+    var schedulePendingCancellation by remember {
+        mutableStateOf<ScheduledStudy?>(null)
+    }
     val selectedDate = LocalDate.parse(selectedDateValue)
     val locale = Locale.forLanguageTag("pt-BR")
-    val studyRecords = StudyRepository.all().groupBy { it.date }
-    val scheduledRecords = StudyRepository.scheduled().groupBy { it.date }
+    val studyRecords = studyRepository.all().groupBy { it.date }
+    val scheduledRecords = studyRepository.scheduled().groupBy { it.date }
     val weekdays = listOf(
         stringResource(R.string.calendar_weekday_monday),
         stringResource(R.string.calendar_weekday_tuesday),
@@ -90,6 +101,32 @@ fun CalendarScreen(
         selectedDateValue = updatedMonth
             .withDayOfMonth(minOf(selectedDate.dayOfMonth, updatedMonth.lengthOfMonth()))
             .toString()
+    }
+
+    studyPendingDeletion?.let { study ->
+        ConfirmActionDialog(
+            titleResource = R.string.delete_study_title,
+            messageResource = R.string.delete_study_confirmation,
+            confirmResource = R.string.delete,
+            onConfirm = {
+                onDeleteStudy(study)
+                studyPendingDeletion = null
+            },
+            onDismiss = { studyPendingDeletion = null }
+        )
+    }
+
+    schedulePendingCancellation?.let { study ->
+        ConfirmActionDialog(
+            titleResource = R.string.cancel_scheduled_study_title,
+            messageResource = R.string.cancel_scheduled_study_confirmation,
+            confirmResource = R.string.cancel_schedule,
+            onConfirm = {
+                onCancelScheduledStudy(study)
+                schedulePendingCancellation = null
+            },
+            onDismiss = { schedulePendingCancellation = null }
+        )
     }
 
     Column(
@@ -264,7 +301,8 @@ fun CalendarScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 
                 val selectedStudies = studyRecords[selectedDate].orEmpty()
-                if (selectedStudies.isEmpty()) {
+                val selectedSchedules = scheduledRecords[selectedDate].orEmpty()
+                if (selectedStudies.isEmpty() && selectedSchedules.isEmpty()) {
                     Text(
                         text = stringResource(R.string.calendar_no_studies),
                         style = MaterialTheme.typography.bodyMedium,
@@ -272,30 +310,58 @@ fun CalendarScreen(
                     )
                 } else {
                     selectedStudies.forEach { study ->
-                        Row(
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = MaterialTheme.spacing.extraSmall),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
                         ) {
-                            Text(
-                                text = study.subject,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(
-                                    R.string.calendar_study_duration,
-                                    study.durationMinutes
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = MaterialTheme.spacing.small,
+                                        vertical = MaterialTheme.spacing.extraSmall
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = study.subject,
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = stringResource(
+                                        R.string.calendar_study_duration,
+                                        study.durationMinutes
+                                    ),
+                                    modifier = Modifier.padding(
+                                        horizontal = MaterialTheme.spacing.small
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                IconButton(
+                                    onClick = { studyPendingDeletion = study },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = stringResource(
+                                            R.string.delete_study_accessibility,
+                                            study.subject
+                                        ),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                val selectedSchedules = scheduledRecords[selectedDate].orEmpty()
                 if (selectedSchedules.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     Text(
@@ -305,7 +371,10 @@ fun CalendarScreen(
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
                     selectedSchedules.forEach { scheduledStudy ->
-                        ScheduledStudyRow(scheduledStudy)
+                        ScheduledStudyRow(
+                            study = scheduledStudy,
+                            onCancel = { schedulePendingCancellation = scheduledStudy }
+                        )
                     }
                 }
             }
@@ -419,7 +488,7 @@ private fun CalendarDay(
 }
 
 @Composable
-private fun ScheduledStudyRow(study: ScheduledStudy) {
+private fun ScheduledStudyRow(study: ScheduledStudy, onCancel: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -441,6 +510,16 @@ private fun ScheduledStudyRow(study: ScheduledStudy) {
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(onClick = onCancel) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(
+                    R.string.cancel_scheduled_study_accessibility,
+                    study.subject
+                ),
+                tint = MaterialTheme.colorScheme.error
             )
         }
     }

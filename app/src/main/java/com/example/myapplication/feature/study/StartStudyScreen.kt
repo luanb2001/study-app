@@ -26,12 +26,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.stringResource
 import com.example.myapplication.R
+import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
+
+private data class StudyConfiguration(
+    val subject: String,
+    val studyMinutes: Int,
+    val breakMinutes: Int,
+    val sessions: Int
+)
 
 @Composable
 fun StartStudyScreen(
@@ -55,6 +61,18 @@ fun StartStudyScreen(
     val durationMinutes = duration.toIntOrNull()
     val breakDurationMinutes = breakDuration.toIntOrNull()
     val sessions = sessionCount.toIntOrNull()
+    val configuration = when {
+        subject.isBlank() -> null
+        durationMinutes == null || durationMinutes <= 0 -> null
+        breakDurationMinutes == null || breakDurationMinutes <= 0 -> null
+        sessions == null || sessions <= 0 -> null
+        else -> StudyConfiguration(
+            subject = subject.trim(),
+            studyMinutes = durationMinutes,
+            breakMinutes = breakDurationMinutes,
+            sessions = sessions
+        )
+    }
 
     Column(
         modifier = modifier
@@ -128,13 +146,13 @@ fun StartStudyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
-                    PomodoroSettingField(
+                    NumberInputField(
                         label = stringResource(R.string.study_duration_short),
                         value = duration,
                         onValueChange = { duration = it },
                         modifier = Modifier.weight(1f)
                     )
-                    PomodoroSettingField(
+                    NumberInputField(
                         label = stringResource(R.string.break_duration_short),
                         value = breakDuration,
                         onValueChange = { breakDuration = it },
@@ -142,7 +160,7 @@ fun StartStudyScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                PomodoroSettingField(
+                NumberInputField(
                     label = stringResource(R.string.number_of_sessions),
                     value = sessionCount,
                     onValueChange = { sessionCount = it },
@@ -155,51 +173,19 @@ fun StartStudyScreen(
 
         Button(
             onClick = {
-                val parsedDuration = durationMinutes
-                val parsedBreakDuration = breakDurationMinutes
-                val parsedSessions = sessions
-                if (
-                    parsedDuration != null && parsedDuration > 0 &&
-                    parsedBreakDuration != null && parsedBreakDuration > 0 &&
-                    parsedSessions != null && parsedSessions > 0 &&
-                    subject.isNotBlank()
-                ) {
+                configuration?.let {
                     onStartStudy(
-                        subject.trim(),
-                        parsedDuration,
-                        parsedBreakDuration,
-                        parsedSessions
+                        it.subject,
+                        it.studyMinutes,
+                        it.breakMinutes,
+                        it.sessions
                     )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = subject.isNotBlank() &&
-                durationMinutes != null && durationMinutes > 0 &&
-                breakDurationMinutes != null && breakDurationMinutes > 0 &&
-                sessions != null && sessions > 0
+            enabled = configuration != null
         ) {
             Text(stringResource(R.string.start_study))
         }
     }
-}
-
-@Composable
-private fun PomodoroSettingField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { newValue ->
-            if (newValue.all(Char::isDigit)) {
-                onValueChange(newValue)
-            }
-        },
-        modifier = modifier,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-    )
 }

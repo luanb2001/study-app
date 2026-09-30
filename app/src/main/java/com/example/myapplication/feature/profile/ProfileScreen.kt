@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.example.myapplication.R
 import com.example.myapplication.feature.study.StudyRepository
+import com.example.myapplication.ui.components.EmptyState
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -59,7 +60,10 @@ private val contributionColumnStep = contributionCellSize + contributionCellGap
 private val contributionRowHeight = 14.dp
 
 @Composable
-fun ProfileScreen(modifier: Modifier = Modifier) {
+fun ProfileScreen(
+    studyRepository: StudyRepository,
+    modifier: Modifier = Modifier
+) {
     val today = LocalDate.now()
     var selectedYear by remember { mutableIntStateOf(today.year) }
     val year = Year.of(selectedYear)
@@ -87,7 +91,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
         gridScrollState.scrollTo(scrollOffset)
     }
     val locale = Locale.forLanguageTag("pt-BR")
-    val entries = StudyRepository.all()
+    val entries = studyRepository.all()
     val sessionCounts = remember(entries, selectedYear) {
         entries
             .filter { it.date.year == selectedYear }
@@ -180,6 +184,9 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            if (sessionCounts.isEmpty()) {
+                EmptyState(R.string.profile_activity_empty, selectedYear)
+            } else {
             Row(verticalAlignment = Alignment.Top) {
                 Column(
                     modifier = Modifier.padding(top = 16.dp, end = 6.dp),
@@ -295,6 +302,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
             }
           }
         }

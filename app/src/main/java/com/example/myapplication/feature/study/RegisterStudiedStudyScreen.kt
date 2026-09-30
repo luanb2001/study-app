@@ -8,17 +8,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,10 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import com.example.myapplication.R
+import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun RegisterStudiedStudyScreen(
@@ -43,12 +53,45 @@ fun RegisterStudiedStudyScreen(
     var summary by rememberSaveable { mutableStateOf("") }
     var sessionsText by rememberSaveable { mutableStateOf("1") }
     var durationText by rememberSaveable { mutableStateOf("") }
+    var selectedDateMillis by rememberSaveable {
+        mutableStateOf(LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
+    }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    val selectedDate = Instant.ofEpochMilli(selectedDateMillis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
     val sessions = sessionsText.toIntOrNull()
     val duration = durationText.toIntOrNull()
     val canRegister = subject.isNotBlank() &&
         summary.isNotBlank() &&
         sessions != null && sessions > 0 &&
         duration != null && duration > 0
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDateMillis = it }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState, title = null)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -85,6 +128,26 @@ fun RegisterStudiedStudyScreen(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
         OutlinedTextField(
+            value = selectedDate.format(
+                DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
+            ),
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            label = { Text(stringResource(R.string.study_date)) },
+            trailingIcon = {
+                IconButton(onClick = { showDatePicker = true }) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = stringResource(R.string.select_study_date)
+                    )
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+        OutlinedTextField(
             value = summary,
             onValueChange = { summary = it },
             modifier = Modifier.fillMaxWidth(),
@@ -95,24 +158,20 @@ fun RegisterStudiedStudyScreen(
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
-        OutlinedTextField(
+        NumberInputField(
             value = sessionsText,
-            onValueChange = { if (it.all(Char::isDigit)) sessionsText = it },
+            onValueChange = { sessionsText = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.number_of_sessions)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            label = stringResource(R.string.number_of_sessions)
         )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
-        OutlinedTextField(
+        NumberInputField(
             value = durationText,
-            onValueChange = { if (it.all(Char::isDigit)) durationText = it },
+            onValueChange = { durationText = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.total_study_duration)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            label = stringResource(R.string.total_study_duration)
         )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -129,7 +188,7 @@ fun RegisterStudiedStudyScreen(
                 ) {
                     onRegisterStudy(
                         StudyEntry(
-                            date = LocalDate.now(),
+                            date = selectedDate,
                             subject = subject.trim(),
                             description = summary.trim(),
                             durationMinutes = parsedDuration,

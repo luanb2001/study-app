@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,8 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import com.example.myapplication.R
+import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
 import java.time.Instant
 import java.time.LocalDate
@@ -48,14 +47,15 @@ import java.util.Locale
 
 @Composable
 fun ScheduleStudyScreen(
+    studyRepository: StudyRepository,
     initialSubject: String = "",
     onBack: () -> Unit,
     onSchedule: (ScheduledStudy) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val existingSubjects = (
-        StudyRepository.all().map { it.subject } +
-            StudyRepository.scheduled().map { it.subject }
+        studyRepository.all().map { it.subject } +
+            studyRepository.scheduled().map { it.subject }
         )
         .distinctBy { it.lowercase(Locale.ROOT) }
         .sorted()
@@ -74,11 +74,20 @@ fun ScheduleStudyScreen(
     val studyMinutes = studyMinutesText.toIntOrNull()
     val breakMinutes = breakMinutesText.toIntOrNull()
     val sessions = sessionsText.toIntOrNull()
-    val canSchedule = subject.isNotBlank() &&
-        selectedDate >= LocalDate.now() &&
-        studyMinutes != null && studyMinutes > 0 &&
-        breakMinutes != null && breakMinutes > 0 &&
-        sessions != null && sessions > 0
+    val scheduledStudy = when {
+        subject.isBlank() -> null
+        selectedDate < LocalDate.now() -> null
+        studyMinutes == null || studyMinutes <= 0 -> null
+        breakMinutes == null || breakMinutes <= 0 -> null
+        sessions == null || sessions <= 0 -> null
+        else -> ScheduledStudy(
+            date = selectedDate,
+            subject = subject.trim(),
+            sessionCount = sessions,
+            studyMinutes = studyMinutes,
+            breakMinutes = breakMinutes
+        )
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -219,13 +228,13 @@ fun ScheduleStudyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
-                    ScheduleNumberField(
+                    NumberInputField(
                         label = stringResource(R.string.study_duration_short),
                         value = studyMinutesText,
                         onValueChange = { studyMinutesText = it },
                         modifier = Modifier.weight(1f)
                     )
-                    ScheduleNumberField(
+                    NumberInputField(
                         label = stringResource(R.string.break_duration_short),
                         value = breakMinutesText,
                         onValueChange = { breakMinutesText = it },
@@ -233,7 +242,7 @@ fun ScheduleStudyScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                ScheduleNumberField(
+                NumberInputField(
                     label = stringResource(R.string.number_of_sessions),
                     value = sessionsText,
                     onValueChange = { sessionsText = it },
@@ -245,53 +254,13 @@ fun ScheduleStudyScreen(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
         Button(
-            onClick = {
-                val parsedStudyMinutes = studyMinutes
-                val parsedBreakMinutes = breakMinutes
-                val parsedSessions = sessions
-                if (
-                    subject.isNotBlank() &&
-                    selectedDate >= LocalDate.now() &&
-                    parsedStudyMinutes != null && parsedStudyMinutes > 0 &&
-                    parsedBreakMinutes != null && parsedBreakMinutes > 0 &&
-                    parsedSessions != null && parsedSessions > 0
-                ) {
-                    onSchedule(
-                        ScheduledStudy(
-                            date = selectedDate,
-                            subject = subject.trim(),
-                            sessionCount = parsedSessions,
-                            studyMinutes = parsedStudyMinutes,
-                            breakMinutes = parsedBreakMinutes
-                        )
-                    )
-                }
-            },
+            onClick = { scheduledStudy?.let(onSchedule) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = canSchedule
+            enabled = scheduledStudy != null
         ) {
             Text(stringResource(R.string.schedule_study))
         }
     }
-}
-
-@Composable
-private fun ScheduleNumberField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { newValue ->
-            if (newValue.all(Char::isDigit)) onValueChange(newValue)
-        },
-        modifier = modifier,
-        label = { Text(label) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-    )
 }
 
 private object FutureStudyDates : androidx.compose.material3.SelectableDates {

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -37,8 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import com.example.myapplication.R
+import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
 import kotlinx.coroutines.delay
 
@@ -46,6 +45,18 @@ private enum class PomodoroPhase {
     STUDY,
     BREAK,
     COMPLETED
+}
+
+private suspend fun notifyPhaseChange(vibrator: Vibrator?) {
+    if (vibrator == null) return
+
+    vibrator.vibrate(
+        VibrationEffect.createWaveform(
+            longArrayOf(0, 150, 130, 150, 130, 150),
+            -1
+        )
+    )
+    delay(710L)
 }
 
 @Composable
@@ -90,37 +101,24 @@ fun PomodoroScreen(
             }
         }
 
-        if (remainingSeconds == 0) {
-            if (phase == PomodoroPhase.STUDY) {
+        when {
+            remainingSeconds != 0 -> Unit
+            phase == PomodoroPhase.STUDY && currentSession >= sessionCount -> {
                 completedStudyMinutes += studyMinutes
                 completedSessionCount += 1
-                if (currentSession >= sessionCount) {
-                    phase = PomodoroPhase.COMPLETED
-                    isRunning = false
-                } else {
-                    if (vibrator != null) {
-                        vibrator.vibrate(
-                            VibrationEffect.createWaveform(
-                                longArrayOf(0, 150, 130, 150, 130, 150),
-                                -1
-                            )
-                        )
-                        delay(710L)
-                    }
-                    phase = PomodoroPhase.BREAK
-                    currentSession += 1
-                    remainingSeconds = totalBreakSeconds
-                }
-            } else {
-                if (vibrator != null) {
-                    vibrator.vibrate(
-                        VibrationEffect.createWaveform(
-                            longArrayOf(0, 150, 130, 150, 130, 150),
-                            -1
-                        )
-                    )
-                    delay(710L)
-                }
+                phase = PomodoroPhase.COMPLETED
+                isRunning = false
+            }
+            phase == PomodoroPhase.STUDY -> {
+                completedStudyMinutes += studyMinutes
+                completedSessionCount += 1
+                notifyPhaseChange(vibrator)
+                phase = PomodoroPhase.BREAK
+                currentSession += 1
+                remainingSeconds = totalBreakSeconds
+            }
+            else -> {
+                notifyPhaseChange(vibrator)
                 phase = PomodoroPhase.STUDY
                 remainingSeconds = totalStudySeconds
             }
@@ -332,7 +330,8 @@ fun PomodoroScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                     ) {
-                        OutlinedTextField(
+                        NumberInputField(
+                            label = stringResource(R.string.study_duration_short),
                             value = studyMinutes.toString(),
                             onValueChange = { newValue ->
                                 val parsed = newValue.toIntOrNull() ?: 0
@@ -343,12 +342,10 @@ fun PomodoroScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.study_duration_short)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
+                        NumberInputField(
+                            label = stringResource(R.string.break_duration_short),
                             value = breakMinutes.toString(),
                             onValueChange = { newValue ->
                                 val parsed = newValue.toIntOrNull() ?: 0
@@ -359,23 +356,18 @@ fun PomodoroScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            label = { Text(stringResource(R.string.break_duration_short)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            modifier = Modifier.weight(1f)
                         )
                     }
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    OutlinedTextField(
+                    NumberInputField(
+                        label = stringResource(R.string.number_of_sessions),
                         value = sessionCount.toString(),
                         onValueChange = { newValue ->
                             val parsed = newValue.toIntOrNull() ?: 1
                             sessionCount = if (parsed > 0) parsed else 1
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.number_of_sessions)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
