@@ -14,27 +14,44 @@ import androidx.core.view.WindowCompat
 private val LightColorScheme = lightColorScheme(
     primary = MutedBlue,
     onPrimary = OffWhite,
+    primaryContainer = MutedBlueContainer,
+    onPrimaryContainer = OnMutedBlueContainer,
     secondary = SageGreen,
     onSecondary = OffWhite,
+    secondaryContainer = SageGreenContainer,
+    onSecondaryContainer = OnSageGreenContainer,
     tertiary = SoftTerracotta,
     onTertiary = OffWhite,
+    tertiaryContainer = TerracottaContainer,
+    onTertiaryContainer = OnTerracottaContainer,
 
-    background = OffWhite,               // OffWhite -> fundo geral
+    background = OffWhite,
     onBackground = Charcoal,
-    surface = SoftGrey,                  // SoftGrey -> cards/superfícies secundárias
+    surface = SoftGrey,
     onSurface = Charcoal,
     surfaceVariant = SoftSurfaceVariant,
     onSurfaceVariant = SubtleGrey,
-    outline = BorderGrey                 // BorderGrey -> bordas/divisores
+    outline = BorderGrey,
+    outlineVariant = BorderGrey,
+    surfaceTint = MutedBlue,
+    inversePrimary = MutedBlueLight,
+    inverseSurface = Charcoal,
+    inverseOnSurface = OffWhite
 )
 
 private val DarkColorScheme = darkColorScheme(
     primary = MutedBlueLight,
     onPrimary = DarkBackground,
+    primaryContainer = DarkBlueContainer,
+    onPrimaryContainer = OnDarkBlueContainer,
     secondary = SageGreenLight,
     onSecondary = DarkBackground,
+    secondaryContainer = DarkGreenContainer,
+    onSecondaryContainer = OnDarkGreenContainer,
     tertiary = SoftTerracottaLight,
     onTertiary = DarkBackground,
+    tertiaryContainer = DarkTerracottaContainer,
+    onTertiaryContainer = OnDarkTerracottaContainer,
 
     background = DarkBackground,
     onBackground = OnDarkText,
@@ -42,7 +59,12 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = OnDarkText,
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = OnDarkSubtext,
-    outline = DarkBorder
+    outline = DarkBorder,
+    outlineVariant = DarkBorder,
+    surfaceTint = MutedBlueLight,
+    inversePrimary = MutedBlue,
+    inverseSurface = OnDarkText,
+    inverseOnSurface = DarkBackground
 )
 
 @Composable

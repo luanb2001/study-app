@@ -49,7 +49,8 @@ fun StartStudyScreen(
         sessions: Int
     ) -> Unit = { _, _, _, _ -> },
     onBack: () -> Unit = {},
-    initialSubject: String = ""
+    initialSubject: String = "",
+    canStartStudy: Boolean = true
 ) {
     var subject by rememberSaveable {
         mutableStateOf(initialSubject)
@@ -63,8 +64,8 @@ fun StartStudyScreen(
     val sessions = sessionCount.toIntOrNull()
     val configuration = when {
         subject.isBlank() -> null
-        durationMinutes == null || durationMinutes <= 0 -> null
-        breakDurationMinutes == null || breakDurationMinutes <= 0 -> null
+        durationMinutes == null || durationMinutes !in 1..MAX_TIMER_MINUTES -> null
+        breakDurationMinutes == null || breakDurationMinutes !in 1..MAX_TIMER_MINUTES -> null
         sessions == null || sessions <= 0 -> null
         else -> StudyConfiguration(
             subject = subject.trim(),
@@ -183,7 +184,7 @@ fun StartStudyScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = configuration != null
+            enabled = configuration != null && canStartStudy
         ) {
             Text(stringResource(R.string.start_study))
         }

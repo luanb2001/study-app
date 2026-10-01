@@ -3,6 +3,7 @@ package com.example.myapplication.feature.study
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
 import java.time.LocalDate
+import java.util.Locale
 
 class LocalStudyRepository(
     context: Context,
@@ -75,6 +76,12 @@ class LocalStudyRepository(
         deletedStudyIds.add(study.id)
         studyDataStore.saveStudies(studyEntries)
         studyDataStore.saveDeletedStudyIds(deletedStudyIds)
+        if (all().none { it.subject.equals(study.subject, ignoreCase = true) }) {
+            val removedReview = reviewSchedules.removeAll {
+                it.subject.equals(study.subject, ignoreCase = true)
+            }
+            if (removedReview) reviewScheduleStore.save(reviewSchedules)
+        }
     }
 
     override fun cancelScheduledStudy(study: ScheduledStudy) {
@@ -86,14 +93,12 @@ class LocalStudyRepository(
         val today = LocalDate.now()
         val studies = all()
         val studyDates = studies.map { it.date }.toSet()
-        val streakDays = generateSequence(today) { it.minusDays(1) }
-            .takeWhile { it in studyDates }
-            .count()
+        val streakDays = StudyProgressCalculator.currentStreakDays(studyDates, today)
         val monthlyStudyHours = studies
             .filter { it.date.year == today.year && it.date.month == today.month }
             .sumOf { it.durationMinutes } / MINUTES_PER_HOUR
         val subjectCount = studies
-            .map { it.subject.lowercase() }
+            .map { it.subject.lowercase(Locale.ROOT) }
             .distinct()
             .size
 
@@ -105,9 +110,11 @@ class LocalStudyRepository(
     }
 
     private fun effectiveReviewSchedules(): List<ReviewSchedule> {
-        val savedSubjects = reviewSchedules.map { it.subject.lowercase() }.toSet()
+        val savedSubjects = reviewSchedules.map { it.subject.lowercase(Locale.ROOT) }.toSet()
         val mockSchedules = if (Data.ENABLED) {
-            Data.reviewSchedules.filterNot { it.subject.lowercase() in savedSubjects }
+            Data.reviewSchedules.filterNot {
+                it.subject.lowercase(Locale.ROOT) in savedSubjects
+            }
         } else {
             emptyList()
         }

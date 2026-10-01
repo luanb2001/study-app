@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -29,7 +28,9 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,11 +42,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.feature.study.ReviewSchedule
+import com.example.myapplication.feature.study.ScheduledStudy
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.study.StudyProgressSummary
-import com.example.myapplication.ui.components.EmptyState
+import com.example.myapplication.feature.pomodoro.PomodoroPhase
+import com.example.myapplication.feature.pomodoro.PomodoroSessionState
+import com.example.myapplication.feature.pomodoro.PomodoroSessionStore
 import com.example.myapplication.ui.theme.spacing
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.coroutines.delay
+
+private data class HomePlanEntry(
+    val key: String,
+    val title: String,
+    val detail: String,
+    val isOverdue: Boolean,
+    val reviewSubject: String? = null,
+    val scheduledStudy: ScheduledStudy? = null,
+    val pomodoroSession: PomodoroSessionState? = null
+)
 
 @Composable
 fun HomeScreen(
@@ -53,8 +70,22 @@ fun HomeScreen(
     studyRepository: StudyRepository,
     onStartStudy: () -> Unit = {},
     onScheduleStudy: () -> Unit = {},
-    onStartPomodoro: (String) -> Unit = {}
+    onStartPomodoro: (String) -> Unit = {},
+    onStartScheduledStudy: (ScheduledStudy) -> Unit = {},
+    onContinuePomodoro: (PomodoroSessionState) -> Unit = {},
+    canStartStudy: Boolean = true
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var activePomodoro by remember {
+        mutableStateOf(PomodoroSessionStore.load(context))
+    }
+    LaunchedEffect(context) {
+        while (true) {
+            activePomodoro = PomodoroSessionStore.load(context)
+            delay(1_000L)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -80,16 +111,28 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
-        TodayReviews(
-            studyRepository = studyRepository,
-            onStartPomodoro = onStartPomodoro
+        val reviews = studyRepository.dueReviews()
+        val upcomingStudies = studyRepository.scheduled()
+            .filter {
+                !it.date.isBefore(LocalDate.now()) &&
+                    it.id != activePomodoro?.scheduledStudyId
+            }
+            .sortedWith(compareBy<ScheduledStudy> { it.date }.thenBy { it.subject })
+        HomePlan(
+            reviews = reviews,
+            scheduledStudies = upcomingStudies,
+            activePomodoro = activePomodoro,
+            onStartPomodoro = onStartPomodoro,
+            onStartScheduledStudy = onStartScheduledStudy,
+            onContinuePomodoro = onContinuePomodoro
         )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
-        StartStudyCard(
+        StartStudyActions(
             onStartStudy = onStartStudy,
-            onScheduleStudy = onScheduleStudy
+            onScheduleStudy = onScheduleStudy,
+            canStartStudy = canStartStudy && activePomodoro == null
         )
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
@@ -101,144 +144,294 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TodayReviews(
-    studyRepository: StudyRepository,
-    onStartPomodoro: (String) -> Unit
+private fun HomePlan(
+    reviews: List<ReviewSchedule>,
+    scheduledStudies: List<ScheduledStudy>,
+    activePomodoro: PomodoroSessionState?,
+    onStartPomodoro: (String) -> Unit,
+    onStartScheduledStudy: (ScheduledStudy) -> Unit,
+    onContinuePomodoro: (PomodoroSessionState) -> Unit
 ) {
-    var selectedReview by rememberSaveable { mutableStateOf<String?>(null) }
-    val reviews = studyRepository.dueReviews()
-    val selectedReviewIsAvailable = reviews.any { it.subject == selectedReview }
+    var selectedEntryKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("dd/MM", Locale.forLanguageTag("pt-BR"))
+    }
+    val entries = buildList {
+        activePomodoro?.let { session ->
+            add(
+                HomePlanEntry(
+                    key = "pomodoro",
+                    title = session.subject,
+                    detail = if (session.phase == PomodoroPhase.COMPLETED) {
+                        stringResource(R.string.pomodoro_finish_pending)
+                    } else {
+                        stringResource(
+                            R.string.pomodoro_in_progress,
+                            stringResource(
+                                if (session.isRunning) {
+                                    R.string.pomodoro_active_label
+                                } else {
+                                    R.string.paused
+                                }
+                            ),
+                            session.currentRemainingSeconds() / 60,
+                            session.currentRemainingSeconds() % 60
+                        )
+                    },
+                    isOverdue = false,
+                    pomodoroSession = session
+                )
+            )
+        }
+        reviews.forEach { review ->
+            add(
+                HomePlanEntry(
+                    key = "review:${review.subject}",
+                    title = review.subject,
+                    detail = stringResource(
+                        if (review.dueDate.isBefore(LocalDate.now())) {
+                            R.string.overdue
+                        } else {
+                            R.string.review_today
+                        }
+                    ),
+                    isOverdue = review.dueDate.isBefore(LocalDate.now()),
+                    reviewSubject = review.subject
+                )
+            )
+        }
+        scheduledStudies.forEach { study ->
+            add(
+                HomePlanEntry(
+                    key = "scheduled:${study.id}",
+                    title = study.subject,
+                    detail = stringResource(
+                        R.string.scheduled_study_date_subject,
+                        study.date.format(dateFormatter),
+                        pluralStringResource(
+                            R.plurals.scheduled_study_settings,
+                            study.sessionCount,
+                            study.sessionCount,
+                            study.studyMinutes,
+                            study.breakMinutes
+                        )
+                    ),
+                    isOverdue = false,
+                    scheduledStudy = study
+                )
+            )
+        }
+    }
+    val selectedEntry = entries.firstOrNull { it.pomodoroSession != null }
+        ?: entries.firstOrNull { it.key == selectedEntryKey }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large)
-        ) {
+        Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
             Text(
-                text = stringResource(R.string.today_reviews),
+                text = stringResource(R.string.your_plan),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-            if (reviews.isEmpty()) {
-                EmptyState(R.string.reviews_empty)
+            if (entries.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.plan_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             } else {
-                reviews.forEach { review ->
-                    val isSelected = selectedReview == review.subject
-                    ReviewItem(
-                        review = review,
-                        isSelected = isSelected,
-                        onClick = { selectedReview = review.subject }
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                entries.forEach { entry ->
+                    if (entry.pomodoroSession != null) {
+                        ActivePomodoroRow(
+                            entry = entry,
+                            session = entry.pomodoroSession,
+                            selected = entry.key == selectedEntry?.key,
+                            onClick = { selectedEntryKey = entry.key }
+                        )
+                    } else {
+                        PlanEntryRow(
+                            entry = entry,
+                            selected = entry.key == selectedEntry?.key,
+                            onClick = { selectedEntryKey = entry.key }
+                        )
+                    }
                 }
             }
-
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             Button(
-                enabled = selectedReviewIsAvailable,
                 onClick = {
-                    selectedReview?.let(onStartPomodoro)
+                    selectedEntry?.let { entry ->
+                        when {
+                            entry.pomodoroSession != null ->
+                                onContinuePomodoro(entry.pomodoroSession)
+                            entry.reviewSubject != null -> onStartPomodoro(entry.reviewSubject)
+                            entry.scheduledStudy != null ->
+                                onStartScheduledStudy(entry.scheduledStudy)
+                        }
+                    }
                 },
+                enabled = selectedEntry != null,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.start_review))
+                Text(
+                    stringResource(
+                        if (selectedEntry?.pomodoroSession != null) {
+                            if (selectedEntry.pomodoroSession.phase == PomodoroPhase.COMPLETED) {
+                                R.string.finish_study
+                            } else {
+                                R.string.continue_study
+                            }
+                        } else {
+                            R.string.start_study
+                        }
+                    )
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ReviewItem(
-    review: ReviewSchedule,
-    isSelected: Boolean,
+private fun ActivePomodoroRow(
+    entry: HomePlanEntry,
+    session: PomodoroSessionState,
+    selected: Boolean,
     onClick: () -> Unit
 ) {
-    val isOverdue = review.dueDate.isBefore(LocalDate.now())
-    val statusText = stringResource(
-        if (isOverdue) R.string.overdue else R.string.review_today
+    val phaseLabel = stringResource(
+        when (session.phase) {
+            PomodoroPhase.STUDY -> R.string.pomodoro_study
+            PomodoroPhase.BREAK -> R.string.pomodoro_break
+            PomodoroPhase.COMPLETED -> R.string.pomodoro_completed
+        }
     )
+    val status = when {
+        session.phase == PomodoroPhase.COMPLETED ->
+            stringResource(R.string.pomodoro_finish_pending)
+        !session.isRunning -> stringResource(R.string.paused)
+        else -> stringResource(
+            R.string.pomodoro_session_count,
+            session.currentSession,
+            session.sessionCount
+        )
+    }
+    val remainingSeconds = session.currentRemainingSeconds()
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                shape = MaterialTheme.shapes.medium
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
             )
-            .then(
-                if (isSelected) {
-                    Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = MaterialTheme.shapes.medium
-                    )
-                } else {
-                    Modifier
-                }
-            ),
-            shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        )
+            .padding(MaterialTheme.spacing.large)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacing.large),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(
-                        color = if (isOverdue) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.secondary
-                        },
-                        shape = CircleShape
-                    )
+        Text(
+            text = entry.title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+        Text(
+            text = if (session.phase == PomodoroPhase.COMPLETED) {
+                status
+            } else {
+                "$phaseLabel • $status"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (session.phase != PomodoroPhase.COMPLETED) {
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Text(
+                text = stringResource(
+                    R.string.pomodoro_time_format,
+                    remainingSeconds / 60,
+                    remainingSeconds % 60
+                ),
+                style = MaterialTheme.typography.displayMedium,
+                color = MaterialTheme.colorScheme.primary
             )
-
-            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = review.subject,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
-
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isOverdue) FontWeight.Medium else FontWeight.Normal,
-                    color = if (isOverdue) {
-                        MaterialTheme.colorScheme.tertiary
-                    } else {
-                        MaterialTheme.colorScheme.secondary
-                    }
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun StartStudyCard(
+private fun PlanEntryRow(
+    entry: HomePlanEntry,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                } else {
+                    MaterialTheme.colorScheme.surface
+                },
+                shape = MaterialTheme.shapes.medium
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(MaterialTheme.spacing.medium),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(
+                    color = if (entry.isOverdue) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.secondary
+                    },
+                    shape = CircleShape
+                )
+        )
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = entry.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (entry.isOverdue) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun StartStudyActions(
     onStartStudy: () -> Unit,
-    onScheduleStudy: () -> Unit
+    onScheduleStudy: () -> Unit,
+    canStartStudy: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -250,26 +443,22 @@ private fun StartStudyCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
             Text(
                 text = stringResource(R.string.start_study_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
             Button(
                 onClick = onStartStudy,
+                enabled = canStartStudy,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-                Text(stringResource(R.string.start_study))
+                Text(stringResource(R.string.start_free_study))
             }
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
             OutlinedButton(
                 onClick = onScheduleStudy,
                 modifier = Modifier.fillMaxWidth()
@@ -283,9 +472,7 @@ private fun StartStudyCard(
 }
 
 @Composable
-private fun ProgressSummary(
-    summary: StudyProgressSummary
-) {
+private fun ProgressSummary(summary: StudyProgressSummary) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.progress),
@@ -293,41 +480,33 @@ private fun ProgressSummary(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground
         )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            if (summary.subjectCount == 0) {
-                EmptyState(R.string.progress_empty)
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(MaterialTheme.spacing.small),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    ProgressItem(
-                        value = summary.streakDays.toString(),
-                        label = stringResource(R.string.streak_days),
-                        modifier = Modifier.weight(1f)
-                    )
-                    ProgressItem(
-                        value = stringResource(
-                            R.string.study_hours_value,
-                            summary.monthlyStudyHours
-                        ),
-                        label = stringResource(R.string.this_month),
-                        modifier = Modifier.weight(1f)
-                    )
-                    ProgressItem(
-                        value = summary.subjectCount.toString(),
-                        label = stringResource(R.string.subject_count),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+        if (summary.subjectCount == 0) {
+            Text(
+                text = stringResource(R.string.progress_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                ProgressItem(
+                    value = summary.streakDays.toString(),
+                    label = stringResource(R.string.streak_days),
+                    modifier = Modifier.weight(1f)
+                )
+                ProgressItem(
+                    value = stringResource(R.string.study_hours_value, summary.monthlyStudyHours),
+                    label = stringResource(R.string.this_month),
+                    modifier = Modifier.weight(1f)
+                )
+                ProgressItem(
+                    value = summary.subjectCount.toString(),
+                    label = stringResource(R.string.subject_count),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -335,26 +514,22 @@ private fun ProgressSummary(
 
 @Composable
 private fun ProgressItem(value: String, label: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+    Column(
+        modifier = modifier.padding(vertical = MaterialTheme.spacing.small),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
 
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

@@ -3,6 +3,8 @@ package com.example.myapplication.feature.study
 import java.time.LocalDate
 import java.util.UUID
 
+const val MAX_TIMER_MINUTES = 1_440
+
 data class StudyEntry(
     val date: LocalDate,
     val subject: String,

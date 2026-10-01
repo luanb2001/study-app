@@ -1,7 +1,6 @@
 package com.example.myapplication.feature.pomodoro
 
-import android.os.VibrationEffect
-import android.os.Vibrator
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,27 +36,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.example.myapplication.R
+import com.example.myapplication.feature.study.MAX_TIMER_MINUTES
 import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
 import kotlinx.coroutines.delay
-
-private enum class PomodoroPhase {
-    STUDY,
-    BREAK,
-    COMPLETED
-}
-
-private suspend fun notifyPhaseChange(vibrator: Vibrator?) {
-    if (vibrator == null) return
-
-    vibrator.vibrate(
-        VibrationEffect.createWaveform(
-            longArrayOf(0, 150, 130, 150, 130, 150),
-            -1
-        )
-    )
-    delay(710L)
-}
 
 @Composable
 fun PomodoroScreen(
@@ -65,95 +47,85 @@ fun PomodoroScreen(
     initialStudyMinutes: Int = 25,
     initialBreakMinutes: Int = 5,
     initialSessionCount: Int = 4,
-    startImmediately: Boolean = false,
+    isReview: Boolean = false,
+    scheduledStudyId: String = "",
     onCompleted: (durationMinutes: Int, sessions: Int, summary: String) -> Unit = { _, _, _ -> },
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val vibrator = remember(context) {
-        context.getSystemService(Vibrator::class.java)
+    val restoredSession = remember(context, subject) {
+        PomodoroSessionStore.load(context)?.takeIf { it.subject == subject }
     }
-    var studyMinutes by rememberSaveable { mutableStateOf(initialStudyMinutes) }
-    var breakMinutes by rememberSaveable { mutableStateOf(initialBreakMinutes) }
-    var sessionCount by rememberSaveable { mutableStateOf(initialSessionCount) }
-
-    var phase by rememberSaveable { mutableStateOf(PomodoroPhase.STUDY) }
-    var currentSession by rememberSaveable { mutableIntStateOf(1) }
-    var remainingSeconds by rememberSaveable { mutableIntStateOf(initialStudyMinutes * 60) }
-    var isRunning by rememberSaveable { mutableStateOf(startImmediately) }
-    var completedStudyMinutes by rememberSaveable { mutableIntStateOf(0) }
-    var completedSessionCount by rememberSaveable { mutableIntStateOf(0) }
+    var studyMinutes by rememberSaveable {
+        mutableIntStateOf(
+            restoredSession?.studyMinutes
+                ?: initialStudyMinutes.coerceIn(1, MAX_TIMER_MINUTES)
+        )
+    }
+    var breakMinutes by rememberSaveable {
+        mutableIntStateOf(
+            restoredSession?.breakMinutes
+                ?: initialBreakMinutes.coerceIn(1, MAX_TIMER_MINUTES)
+        )
+    }
+    var sessionCount by rememberSaveable {
+        mutableIntStateOf(restoredSession?.sessionCount ?: initialSessionCount.coerceAtLeast(1))
+    }
+    var session by remember(subject) { mutableStateOf(restoredSession) }
     var summary by rememberSaveable { mutableStateOf("") }
     var studyFinalized by rememberSaveable { mutableStateOf(false) }
+    val phase = session?.phase ?: PomodoroPhase.STUDY
+    val currentSession = session?.currentSession ?: 1
+    val remainingSeconds = session?.currentRemainingSeconds() ?: studyMinutes * 60
+    val isRunning = session?.isRunning == true
+    val configurationLocked = session != null
+    val completedStudyMinutes = session?.completedStudyMinutes ?: 0
+    val completedSessionCount = session?.completedSessionCount ?: 0
 
-    val totalStudySeconds = studyMinutes * 60
-    val totalBreakSeconds = breakMinutes * 60
-
-    LaunchedEffect(isRunning, phase) {
-        if (!isRunning) {
-            return@LaunchedEffect
+    LaunchedEffect(context, subject) {
+        session?.takeIf { it.phase != PomodoroPhase.COMPLETED }?.let {
+            PomodoroNotificationService.start(context, it)
         }
-
-        while (isRunning && remainingSeconds > 0) {
-            delay(1000L)
-            if (isRunning) {
-                remainingSeconds -= 1
-            }
-        }
-
-        when {
-            remainingSeconds != 0 -> Unit
-            phase == PomodoroPhase.STUDY && currentSession >= sessionCount -> {
-                completedStudyMinutes += studyMinutes
-                completedSessionCount += 1
-                phase = PomodoroPhase.COMPLETED
-                isRunning = false
-            }
-            phase == PomodoroPhase.STUDY -> {
-                completedStudyMinutes += studyMinutes
-                completedSessionCount += 1
-                notifyPhaseChange(vibrator)
-                phase = PomodoroPhase.BREAK
-                currentSession += 1
-                remainingSeconds = totalBreakSeconds
-            }
-            else -> {
-                notifyPhaseChange(vibrator)
-                phase = PomodoroPhase.STUDY
-                remainingSeconds = totalStudySeconds
-            }
+        while (true) {
+            delay(250L)
+            session = PomodoroSessionStore.load(context)?.takeIf { it.subject == subject }
         }
     }
 
     fun resetPomodoro() {
-        isRunning = false
-        phase = PomodoroPhase.STUDY
-        currentSession = 1
-        remainingSeconds = totalStudySeconds
-        completedStudyMinutes = 0
-        completedSessionCount = 0
+        PomodoroNotificationService.reset(context)
+        session = null
         summary = ""
+        studyFinalized = false
+    }
+
+    fun startSession(previous: PomodoroSessionState? = null) {
+        val remaining = studyMinutes * 60
+        val now = SystemClock.elapsedRealtime()
+        val newSession = PomodoroSessionState(
+            subject = subject,
+            studyMinutes = studyMinutes,
+            breakMinutes = breakMinutes,
+            sessionCount = sessionCount,
+            currentSession = 1,
+            phase = PomodoroPhase.STUDY,
+            remainingSeconds = remaining,
+            isRunning = true,
+            deadlineElapsedRealtime = now + remaining * 1_000L,
+            completedStudyMinutes = previous?.completedStudyMinutes ?: 0,
+            completedSessionCount = previous?.completedSessionCount ?: 0,
+            isReview = isReview,
+            scheduledStudyId = scheduledStudyId
+        )
+        session = newSession
+        studyFinalized = false
+        PomodoroNotificationService.start(context, newSession)
     }
 
     val phaseLabel = when (phase) {
         PomodoroPhase.STUDY -> stringResource(R.string.pomodoro_study)
         PomodoroPhase.BREAK -> stringResource(R.string.pomodoro_break)
         PomodoroPhase.COMPLETED -> stringResource(R.string.pomodoro_completed)
-    }
-
-    LaunchedEffect(isRunning, phase, currentSession, subject, phaseLabel) {
-        if (isRunning) {
-            PomodoroNotificationService.update(
-                context = context,
-                subject = subject,
-                phase = phaseLabel,
-                remainingSeconds = remainingSeconds,
-                currentSession = currentSession,
-                sessionCount = sessionCount
-            )
-        } else {
-            PomodoroNotificationService.stop(context)
-        }
     }
 
     Column(
@@ -208,10 +180,7 @@ fun PomodoroScreen(
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
                     Button(
                         onClick = {
-                            phase = PomodoroPhase.STUDY
-                            currentSession = 1
-                            remainingSeconds = totalStudySeconds
-                            isRunning = true
+                            startSession(session)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -230,6 +199,7 @@ fun PomodoroScreen(
                     Button(
                         onClick = {
                             if (!studyFinalized) {
+                                PomodoroNotificationService.reset(context)
                                 onCompleted(
                                     completedStudyMinutes,
                                     completedSessionCount,
@@ -312,10 +282,38 @@ fun PomodoroScreen(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                     ) {
                         Button(
-                            onClick = { isRunning = !isRunning },
+                            onClick = {
+                                val currentSessionState = session
+                                if (currentSessionState == null) {
+                                    startSession()
+                                } else if (currentSessionState.isRunning) {
+                                    val paused = currentSessionState.snapshot().copy(
+                                        isRunning = false,
+                                        deadlineElapsedRealtime = 0L
+                                    )
+                                    session = paused
+                                    PomodoroNotificationService.pause(context)
+                                } else {
+                                    val resumed = currentSessionState.copy(
+                                        isRunning = true,
+                                        deadlineElapsedRealtime = SystemClock.elapsedRealtime() +
+                                            currentSessionState.remainingSeconds * 1_000L
+                                    )
+                                    session = resumed
+                                    PomodoroNotificationService.resume(context)
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(stringResource(if (isRunning) R.string.pause else R.string.start))
+                            Text(
+                                stringResource(
+                                    when {
+                                        isRunning -> R.string.pause
+                                        session != null -> R.string.resume_study
+                                        else -> R.string.start
+                                    }
+                                )
+                            )
                         }
 
                         OutlinedButton(
@@ -348,13 +346,11 @@ fun PomodoroScreen(
                         NumberInputField(
                             label = stringResource(R.string.study_duration_short),
                             value = studyMinutes.toString(),
+                            enabled = !configurationLocked,
                             onValueChange = { newValue ->
                                 val parsed = newValue.toIntOrNull() ?: 0
-                                if (parsed > 0) {
+                                if (parsed in 1..MAX_TIMER_MINUTES) {
                                     studyMinutes = parsed
-                                    if (!isRunning && phase == PomodoroPhase.STUDY) {
-                                        remainingSeconds = parsed * 60
-                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -362,13 +358,11 @@ fun PomodoroScreen(
                         NumberInputField(
                             label = stringResource(R.string.break_duration_short),
                             value = breakMinutes.toString(),
+                            enabled = !configurationLocked,
                             onValueChange = { newValue ->
                                 val parsed = newValue.toIntOrNull() ?: 0
-                                if (parsed > 0) {
+                                if (parsed in 1..MAX_TIMER_MINUTES) {
                                     breakMinutes = parsed
-                                    if (!isRunning && phase == PomodoroPhase.BREAK) {
-                                        remainingSeconds = parsed * 60
-                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -378,9 +372,10 @@ fun PomodoroScreen(
                     NumberInputField(
                         label = stringResource(R.string.number_of_sessions),
                         value = sessionCount.toString(),
+                        enabled = !configurationLocked,
                         onValueChange = { newValue ->
-                            val parsed = newValue.toIntOrNull() ?: 1
-                            sessionCount = if (parsed > 0) parsed else 1
+                            val parsed = newValue.toIntOrNull()
+                            if (parsed != null && parsed > 0) sessionCount = parsed
                         },
                         modifier = Modifier.fillMaxWidth()
                     )

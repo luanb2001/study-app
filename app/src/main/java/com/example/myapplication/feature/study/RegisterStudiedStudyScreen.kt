@@ -65,11 +65,13 @@ fun RegisterStudiedStudyScreen(
     val canRegister = subject.isNotBlank() &&
         summary.isNotBlank() &&
         sessions != null && sessions > 0 &&
-        duration != null && duration > 0
+        duration != null && duration in 1..MAX_TIMER_MINUTES &&
+        selectedDate <= LocalDate.now()
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDateMillis
+            initialSelectedDateMillis = selectedDateMillis,
+            selectableDates = PastOrTodayStudyDates
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -184,7 +186,8 @@ fun RegisterStudiedStudyScreen(
                     subject.isNotBlank() &&
                     summary.isNotBlank() &&
                     parsedSessions != null && parsedSessions > 0 &&
-                    parsedDuration != null && parsedDuration > 0
+                    parsedDuration != null && parsedDuration in 1..MAX_TIMER_MINUTES &&
+                    selectedDate <= LocalDate.now()
                 ) {
                     onRegisterStudy(
                         StudyEntry(
@@ -203,4 +206,13 @@ fun RegisterStudiedStudyScreen(
             Text(stringResource(R.string.register_study))
         }
     }
+
+}
+
+private object PastOrTodayStudyDates : androidx.compose.material3.SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC)
+            .toLocalDate() <= LocalDate.now()
+
+    override fun isSelectableYear(year: Int): Boolean = year <= LocalDate.now().year
 }

@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
@@ -76,7 +77,8 @@ fun SubjectsScreen(
     onOpenSubject: (String) -> Unit,
     onStartStudy: () -> Unit,
     onRegisterStudy: () -> Unit,
-    onScheduleStudy: () -> Unit
+    onScheduleStudy: () -> Unit,
+    canStartStudy: Boolean = true
 ) {
     var groupingName by rememberSaveable { mutableStateOf(StudyGrouping.DAY.name) }
     val grouping = StudyGrouping.valueOf(groupingName)
@@ -149,7 +151,7 @@ fun SubjectsScreen(
                     .fillMaxWidth()
                     .padding(top = MaterialTheme.spacing.medium),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             ) {
                 Column(
@@ -170,6 +172,7 @@ fun SubjectsScreen(
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     Button(
                         onClick = onStartStudy,
+                        enabled = canStartStudy,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
@@ -315,7 +318,11 @@ private fun SubjectRow(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = stringResource(R.string.subject_session_count, sessionCount),
+                    text = pluralStringResource(
+                        R.plurals.subject_session_count,
+                        sessionCount,
+                        sessionCount
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

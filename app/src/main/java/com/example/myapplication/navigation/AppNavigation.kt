@@ -1,6 +1,12 @@
 package com.example.myapplication.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
@@ -15,6 +21,8 @@ import androidx.navigation.compose.composable
 import com.example.myapplication.feature.calendar.CalendarScreen
 import com.example.myapplication.feature.home.HomeScreen
 import com.example.myapplication.feature.pomodoro.PomodoroScreen
+import com.example.myapplication.feature.pomodoro.PomodoroSessionStore
+import com.example.myapplication.feature.pomodoro.PomodoroSessionState
 import com.example.myapplication.feature.profile.ProfileScreen
 import com.example.myapplication.feature.study.StartStudyScreen
 import com.example.myapplication.feature.study.RegisterStudiedStudyScreen
@@ -26,6 +34,7 @@ import com.example.myapplication.feature.subjects.SubjectDetailScreen
 import com.example.myapplication.feature.subjects.SubjectsScreen
 import android.net.Uri
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 object Routes {
     const val HOME = "home"
@@ -36,7 +45,7 @@ object Routes {
     const val START_STUDY = "start_study"
     const val REGISTER_STUDY = "register_study"
     const val SCHEDULE_STUDY = "schedule_study"
-    const val POMODORO = "pomodoro/{subject}?duration={duration}&breakDuration={breakDuration}&autoStart={autoStart}&sessions={sessions}&isReview={isReview}"
+    const val POMODORO = "pomodoro/{subject}?duration={duration}&breakDuration={breakDuration}&sessions={sessions}&isReview={isReview}&scheduledStudyId={scheduledStudyId}"
 }
 
 @Composable
@@ -45,6 +54,16 @@ fun AppNavigation(
     studyRepository: StudyRepository,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var activePomodoro by remember(context) {
+        mutableStateOf(PomodoroSessionStore.load(context))
+    }
+    LaunchedEffect(context) {
+        while (true) {
+            activePomodoro = PomodoroSessionStore.load(context)
+            delay(500L)
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
@@ -72,9 +91,23 @@ fun AppNavigation(
                     navController.navigate(Routes.SCHEDULE_STUDY)
                 },
                 onStartPomodoro = { selectedSubject ->
-                    navController.navigate(
-                        "pomodoro/${Uri.encode(selectedSubject)}?duration=25&autoStart=false&sessions=4&isReview=true"
+                    navigateToPomodoro(
+                        navController,
+                        context,
+                        "pomodoro/${Uri.encode(selectedSubject)}?duration=25&sessions=4&isReview=true"
                     )
+                },
+                onStartScheduledStudy = { study ->
+                    navigateToPomodoro(
+                        navController,
+                        context,
+                        "pomodoro/${Uri.encode(study.subject)}?duration=${study.studyMinutes}" +
+                            "&breakDuration=${study.breakMinutes}" +
+                            "&sessions=${study.sessionCount}&scheduledStudyId=${Uri.encode(study.id)}"
+                    )
+                },
+                onContinuePomodoro = { session ->
+                    navController.navigate(session.pomodoroRoute())
                 }
             )
         }
@@ -108,7 +141,8 @@ fun AppNavigation(
                 },
                 onScheduleStudy = {
                     navController.navigate(Routes.SCHEDULE_STUDY)
-                }
+                },
+                canStartStudy = activePomodoro == null
             )
         }
 
@@ -136,7 +170,8 @@ fun AppNavigation(
                     navController.navigate(
                         "${Routes.SCHEDULE_STUDY}?subject=${Uri.encode(subject)}"
                     )
-                }
+                },
+                canStartStudy = activePomodoro == null
             )
         }
 
@@ -192,10 +227,13 @@ fun AppNavigation(
                 initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
                 onBack = { navController.popBackStack() },
                 onStartStudy = { subject, durationMinutes, breakMinutes, sessions ->
-                    navController.navigate(
-                        "pomodoro/${Uri.encode(subject)}?duration=$durationMinutes&breakDuration=$breakMinutes&autoStart=true&sessions=$sessions"
+                    navigateToPomodoro(
+                        navController,
+                        context,
+                        "pomodoro/${Uri.encode(subject)}?duration=$durationMinutes&breakDuration=$breakMinutes&sessions=$sessions"
                     )
-                }
+                },
+                canStartStudy = activePomodoro == null
             )
         }
 
@@ -211,10 +249,6 @@ fun AppNavigation(
                     type = NavType.IntType
                     defaultValue = 5
                 },
-                navArgument("autoStart") {
-                    type = NavType.BoolType
-                    defaultValue = false
-                },
                 navArgument("sessions") {
                     type = NavType.IntType
                     defaultValue = 4
@@ -222,17 +256,24 @@ fun AppNavigation(
                 navArgument("isReview") {
                     type = NavType.BoolType
                     defaultValue = false
+                },
+                navArgument("scheduledStudyId") {
+                    type = NavType.StringType
+                    defaultValue = ""
                 }
             )
         ) { backStackEntry ->
             val subject = backStackEntry.arguments?.getString("subject").orEmpty()
             val isReview = backStackEntry.arguments?.getBoolean("isReview") ?: false
+            val scheduledStudyId =
+                backStackEntry.arguments?.getString("scheduledStudyId").orEmpty()
             PomodoroScreen(
                 subject = subject,
                 initialStudyMinutes = backStackEntry.arguments?.getInt("duration") ?: 25,
                 initialBreakMinutes = backStackEntry.arguments?.getInt("breakDuration") ?: 5,
                 initialSessionCount = backStackEntry.arguments?.getInt("sessions") ?: 4,
-                startImmediately = backStackEntry.arguments?.getBoolean("autoStart") ?: false,
+                isReview = isReview,
+                scheduledStudyId = scheduledStudyId,
                 onCompleted = { durationMinutes, sessions, summary ->
                     studyRepository.recordStudy(
                         StudyEntry(
@@ -244,6 +285,11 @@ fun AppNavigation(
                         ),
                         isReview = isReview
                     )
+                    if (scheduledStudyId.isNotEmpty()) {
+                        studyRepository.scheduled()
+                            .firstOrNull { it.id == scheduledStudyId }
+                            ?.let(studyRepository::cancelScheduledStudy)
+                    }
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.HOME) { inclusive = false }
                         launchSingleTop = true
@@ -253,4 +299,19 @@ fun AppNavigation(
             )
         }
     }
+
+}
+
+private fun PomodoroSessionState.pomodoroRoute(): String =
+    "pomodoro/${Uri.encode(subject)}?duration=$studyMinutes" +
+        "&breakDuration=$breakMinutes&sessions=$sessionCount" +
+        "&isReview=$isReview&scheduledStudyId=${Uri.encode(scheduledStudyId)}"
+
+private fun navigateToPomodoro(
+    navController: NavHostController,
+    context: android.content.Context,
+    requestedRoute: String
+) {
+    val currentSession = PomodoroSessionStore.load(context)
+    navController.navigate(currentSession?.pomodoroRoute() ?: requestedRoute)
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
@@ -49,7 +50,8 @@ fun SubjectDetailScreen(
     onRegisterStudy: () -> Unit,
     onScheduleStudy: () -> Unit,
     onDeleteStudy: (StudyEntry) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    canStartStudy: Boolean = true
 ) {
     var studyPendingDeletion by remember { mutableStateOf<StudyEntry?>(null) }
     val entries = studyRepository.forSubject(subject).sortedByDescending { it.date }
@@ -144,8 +146,9 @@ fun SubjectDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
                         Text(
-                            text = stringResource(
-                                R.string.study_entry_sessions_and_duration,
+                            text = pluralStringResource(
+                                R.plurals.study_entry_sessions_and_duration,
+                                entry.sessionCount,
                                 entry.sessionCount,
                                 entry.durationMinutes
                             ),
@@ -162,6 +165,7 @@ fun SubjectDetailScreen(
 
         Button(
             onClick = onStartStudy,
+            enabled = canStartStudy,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.start_study))

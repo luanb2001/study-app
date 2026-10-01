@@ -1,6 +1,7 @@
 package com.example.myapplication.feature.study.reminder
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -18,6 +19,7 @@ import com.example.myapplication.feature.study.ReviewScheduleStore
 import java.time.LocalDate
 
 class ReviewReminderReceiver : BroadcastReceiver() {
+    @SuppressLint("MissingPermission")
     override fun onReceive(context: Context, intent: Intent) {
         ReviewReminderScheduler.scheduleDaily(context)
         createNotificationChannel(context)

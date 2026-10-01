@@ -12,14 +12,16 @@ fun NumberInputField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = { input ->
-            if (input.all(Char::isDigit)) onValueChange(input)
+            if (enabled && input.all(Char::isDigit)) onValueChange(input)
         },
         modifier = modifier,
+        enabled = enabled,
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)

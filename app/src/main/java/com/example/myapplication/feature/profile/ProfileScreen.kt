@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -319,8 +320,9 @@ private fun ContributionDay(date: LocalDate, sessions: Int, isToday: Boolean) {
         sessions <= 4 -> primary.copy(alpha = 0.65f)
         else -> primary
     }
-    val description = stringResource(
-        R.string.profile_day_accessibility,
+    val description = pluralStringResource(
+        R.plurals.profile_day_accessibility,
+        sessions,
         date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))),
         sessions
     )

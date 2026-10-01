@@ -3,6 +3,7 @@ package com.example.myapplication.feature.study
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.example.myapplication.R
 import com.example.myapplication.ui.components.NumberInputField
@@ -59,6 +61,7 @@ fun ScheduleStudyScreen(
         )
         .distinctBy { it.lowercase(Locale.ROOT) }
         .sorted()
+    val locale = LocalConfiguration.current.locales[0]
     var subject by rememberSaveable { mutableStateOf(initialSubject) }
     var studyMinutesText by rememberSaveable { mutableStateOf("25") }
     var breakMinutesText by rememberSaveable { mutableStateOf("5") }
@@ -77,8 +80,8 @@ fun ScheduleStudyScreen(
     val scheduledStudy = when {
         subject.isBlank() -> null
         selectedDate < LocalDate.now() -> null
-        studyMinutes == null || studyMinutes <= 0 -> null
-        breakMinutes == null || breakMinutes <= 0 -> null
+        studyMinutes == null || studyMinutes !in 1..MAX_TIMER_MINUTES -> null
+        breakMinutes == null || breakMinutes !in 1..MAX_TIMER_MINUTES -> null
         sessions == null || sessions <= 0 -> null
         else -> ScheduledStudy(
             date = selectedDate,
@@ -155,7 +158,7 @@ fun ScheduleStudyScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                 OutlinedTextField(
                     value = selectedDate.format(
-                        DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.getDefault())
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy", locale)
                     ),
                     onValueChange = {},
                     modifier = Modifier.fillMaxWidth(),
