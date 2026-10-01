@@ -26,10 +26,11 @@
     <string name="reviews_empty">Nenhuma revisão pendente. Registre ou conclua um estudo para agendar a primeira revisão.</string>
     <string name="review_reminder_channel_name">Lembretes de revisão</string>
     <string name="review_reminder_channel_description">Avisos diários às 7h sobre assuntos que precisam ser revisados.</string>
-    <string name="review_reminder_title">Lembretes de estudo</string>
-    <string name="study_reminder_message">%1$d revisões pendentes e %2$d estudos agendados para hoje ou atrasados.</string>
-    <string name="review_reminder_subject">Revisar: %1$s</string>
-    <string name="scheduled_reminder_subject">Agendado: %1$s</string>
+    <string name="review_reminder_title">Seu plano de estudos de hoje</string>
+    <string name="reminder_summary_separator"> • </string>
+    <string name="reminder_tap_to_open">Toque para ver seu plano e começar.</string>
+    <string name="review_reminder_subject">• %1$s</string>
+    <string name="scheduled_reminder_subject">• %1$s</string>
     <string name="start_study_question">Pronto para estudar?</string>
     <string name="start_study_description">Escolha um assunto e defina o tempo da sessão Pomodoro.</string>
     <string name="start_study">Iniciar estudo</string>
@@ -79,6 +80,10 @@
     <string name="pomodoro_study">Estudo</string>
     <string name="pomodoro_break">Intervalo</string>
     <string name="pomodoro_completed">Concluído</string>
+    <string name="pomodoro_notification_channel_name">Sessão Pomodoro</string>
+    <string name="pomodoro_notification_channel_description">Cronômetro da sessão de estudo ou intervalo em andamento.</string>
+    <string name="pomodoro_notification_title">%1$s • %2$s</string>
+    <string name="pomodoro_notification_session">Sessão %1$d de %2$d</string>
     <string name="study_finished">Estudo finalizado!</string>
     <string name="study_finished_duration">Você estudou por %1$d minutos.</string>
     <string name="add_more_sessions">Adicionar mais sessões</string>
@@ -146,8 +151,12 @@
     <string name="profile_activity_empty">Ainda não há estudos registrados em %1$d para mostrar sua atividade.</string>
     <string name="profile_less">Menos</string>
     <string name="profile_more">Mais</string>
-    <plurals name="review_reminder_message">
-        <item quantity="one">%1$d assunto precisa de revisão.</item>
-        <item quantity="other">%1$d assuntos precisam de revisão.</item>
+    <plurals name="review_reminder_count">
+        <item quantity="one">%d revisão para fazer</item>
+        <item quantity="other">%d revisões para fazer</item>
+    </plurals>
+    <plurals name="scheduled_study_reminder_count">
+        <item quantity="one">%d estudo planejado</item>
+        <item quantity="other">%d estudos planejados</item>
     </plurals>
 </resources>

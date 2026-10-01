@@ -43,27 +43,42 @@ class ReviewReminderReceiver : BroadcastReceiver() {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val subjects = buildList {
-            dueReviews.map { it.subject }.distinct().forEach {
-                add(context.getString(R.string.review_reminder_subject, it))
+        val reviewCount = context.resources.getQuantityString(
+            R.plurals.review_reminder_count,
+            dueReviews.size,
+            dueReviews.size
+        )
+        val scheduledCount = context.resources.getQuantityString(
+            R.plurals.scheduled_study_reminder_count,
+            scheduledStudies.size,
+            scheduledStudies.size
+        )
+        val summary = listOfNotNull(
+            reviewCount.takeIf { dueReviews.isNotEmpty() },
+            scheduledCount.takeIf { scheduledStudies.isNotEmpty() }
+        ).joinToString(context.getString(R.string.reminder_summary_separator))
+        val notificationLines = buildList {
+            if (dueReviews.isNotEmpty()) {
+                add(reviewCount)
+                dueReviews.map { it.subject }.distinct().forEach {
+                    add(context.getString(R.string.review_reminder_subject, it))
+                }
             }
-            scheduledStudies.map { it.subject }.distinct().forEach {
-                add(context.getString(R.string.scheduled_reminder_subject, it))
+            if (scheduledStudies.isNotEmpty()) {
+                add(scheduledCount)
+                scheduledStudies.map { it.subject }.distinct().forEach {
+                    add(context.getString(R.string.scheduled_reminder_subject, it))
+                }
             }
         }
         val notification = NotificationCompat.Builder(context, REVIEW_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.review_reminder_title))
-            .setContentText(
-                context.getString(
-                    R.string.study_reminder_message,
-                    dueReviews.size,
-                    scheduledStudies.size
-                )
-            )
+            .setContentText(summary)
             .setStyle(
                 NotificationCompat.InboxStyle().also { style ->
-                    subjects.forEach(style::addLine)
+                    notificationLines.forEach(style::addLine)
+                    style.setSummaryText(context.getString(R.string.reminder_tap_to_open))
                 }
             )
             .setContentIntent(openAppIntent)

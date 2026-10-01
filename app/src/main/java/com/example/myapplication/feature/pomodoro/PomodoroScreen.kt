@@ -141,6 +141,21 @@ fun PomodoroScreen(
         PomodoroPhase.COMPLETED -> stringResource(R.string.pomodoro_completed)
     }
 
+    LaunchedEffect(isRunning, phase, currentSession, subject, phaseLabel) {
+        if (isRunning) {
+            PomodoroNotificationService.update(
+                context = context,
+                subject = subject,
+                phase = phaseLabel,
+                remainingSeconds = remainingSeconds,
+                currentSession = currentSession,
+                sessionCount = sessionCount
+            )
+        } else {
+            PomodoroNotificationService.stop(context)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
