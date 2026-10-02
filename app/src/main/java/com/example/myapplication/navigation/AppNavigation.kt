@@ -117,6 +117,7 @@ fun AppNavigation(
                 studyRepository = studyRepository,
                 onDeleteStudy = studyRepository::deleteStudy,
                 onCancelScheduledStudy = studyRepository::cancelScheduledStudy,
+                onRescheduleReview = studyRepository::rescheduleReview,
                 onScheduleStudy = {
                     navController.navigate(Routes.SCHEDULE_STUDY)
                 }

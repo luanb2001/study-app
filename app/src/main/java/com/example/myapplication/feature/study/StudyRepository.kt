@@ -52,6 +52,8 @@ interface StudyRepository {
     // Backend: GET /api/reviews?dueOnOrBefore={date}
     fun dueReviews(today: LocalDate = LocalDate.now()): List<ReviewSchedule>
 
+    fun reviewSchedules(): List<ReviewSchedule>
+
     // Backend: GET /api/studies/summary
     fun progressSummary(): StudyProgressSummary
 
@@ -63,6 +65,8 @@ interface StudyRepository {
 
     // Backend: POST /api/studies/scheduled
     fun schedule(study: ScheduledStudy)
+
+    fun rescheduleReview(review: ReviewSchedule, newDate: LocalDate)
 
     // Backend: DELETE /api/studies/{studyId}
     fun deleteStudy(study: StudyEntry)

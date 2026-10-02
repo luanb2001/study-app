@@ -31,9 +31,12 @@ class LocalStudyRepository(
     }
 
     override fun dueReviews(today: LocalDate): List<ReviewSchedule> =
-        effectiveReviewSchedules()
+        reviewSchedules()
             .filter { !it.dueDate.isAfter(today) }
             .sortedBy { it.dueDate }
+
+    override fun reviewSchedules(): List<ReviewSchedule> =
+        effectiveReviewSchedules().sortedBy { it.dueDate }
 
     override fun progressSummary(): StudyProgressSummary =
         if (Data.ENABLED && studyEntries.isEmpty()) {
@@ -69,6 +72,19 @@ class LocalStudyRepository(
     override fun schedule(study: ScheduledStudy) {
         scheduledStudies.add(study)
         studyDataStore.saveScheduledStudies(scheduledStudies)
+    }
+
+    override fun rescheduleReview(review: ReviewSchedule, newDate: LocalDate) {
+        val scheduleIndex = reviewSchedules.indexOfFirst {
+            it.subject.equals(review.subject, ignoreCase = true)
+        }
+        val updatedSchedule = review.copy(dueDate = newDate)
+        if (scheduleIndex == -1) {
+            reviewSchedules.add(updatedSchedule)
+        } else {
+            reviewSchedules[scheduleIndex] = updatedSchedule
+        }
+        reviewScheduleStore.save(reviewSchedules)
     }
 
     override fun deleteStudy(study: StudyEntry) {

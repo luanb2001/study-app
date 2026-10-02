@@ -66,6 +66,9 @@
     <string name="cancel_scheduled_study_accessibility">Cancelar agendamento de %1$s</string>
     <string name="calendar_no_scheduled_studies">Nenhum estudo agendado neste dia.</string>
     <string name="scheduled_day_marker">Agendado: %1$s</string>
+    <string name="review_day_marker">Revisão: %1$s</string>
+    <string name="calendar_scheduled_reviews">Revisões programadas</string>
+    <string name="reschedule_review_accessibility">Alterar dia da revisão de %1$s</string>
     <string name="subjects_study_actions_title">Organize seus estudos</string>
     <string name="subjects_study_actions_description">Inicie uma sessão, registre o que já estudou ou planeje a próxima.</string>
     <string name="subjects_history_title">Histórico de estudos</string>

@@ -26,20 +26,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,13 +59,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
-import com.example.myapplication.feature.study.StudyEntry
+import com.example.myapplication.feature.study.ReviewSchedule
 import com.example.myapplication.feature.study.ScheduledStudy
+import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.ui.components.ConfirmActionDialog
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -70,7 +78,8 @@ fun CalendarScreen(
     modifier: Modifier = Modifier,
     onScheduleStudy: () -> Unit = {},
     onDeleteStudy: (StudyEntry) -> Unit,
-    onCancelScheduledStudy: (ScheduledStudy) -> Unit
+    onCancelScheduledStudy: (ScheduledStudy) -> Unit,
+    onRescheduleReview: (ReviewSchedule, LocalDate) -> Unit
 ) {
     val today = LocalDate.now()
     var displayedMonthValue by rememberSaveable {
@@ -87,6 +96,7 @@ fun CalendarScreen(
     val locale = Locale.forLanguageTag("pt-BR")
     val studyRecords = studyRepository.all().groupBy { it.date }
     val scheduledRecords = studyRepository.scheduled().groupBy { it.date }
+    val reviewRecords = studyRepository.reviewSchedules().groupBy { it.dueDate }
     val weekdays = listOf(
         stringResource(R.string.calendar_weekday_monday),
         stringResource(R.string.calendar_weekday_tuesday),
@@ -261,6 +271,9 @@ fun CalendarScreen(
                                                 scheduledStudies = scheduledRecords[
                                                     animatedMonth.withDayOfMonth(dayNumber)
                                                 ].orEmpty(),
+                                                reviews = reviewRecords[
+                                                    animatedMonth.withDayOfMonth(dayNumber)
+                                                ].orEmpty(),
                                                 isToday = animatedMonth.withDayOfMonth(dayNumber) == today,
                                                 isSelected = animatedMonth.withDayOfMonth(dayNumber) == selectedDate,
                                                 onClick = {
@@ -303,7 +316,10 @@ fun CalendarScreen(
 
                 val selectedStudies = studyRecords[selectedDate].orEmpty()
                 val selectedSchedules = scheduledRecords[selectedDate].orEmpty()
-                if (selectedStudies.isEmpty() && selectedSchedules.isEmpty()) {
+                val selectedReviews = reviewRecords[selectedDate].orEmpty()
+                if (selectedStudies.isEmpty() && selectedSchedules.isEmpty() &&
+                    selectedReviews.isEmpty()
+                ) {
                     Text(
                         text = stringResource(R.string.calendar_no_studies),
                         style = MaterialTheme.typography.bodyMedium,
@@ -378,6 +394,22 @@ fun CalendarScreen(
                         )
                     }
                 }
+
+                if (selectedReviews.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                    Text(
+                        text = stringResource(R.string.calendar_scheduled_reviews),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+                    selectedReviews.forEach { review ->
+                        ReviewScheduleRow(
+                            review = review,
+                            onReschedule = { date -> onRescheduleReview(review, date) }
+                        )
+                    }
+                }
             }
         }
 
@@ -409,6 +441,7 @@ private fun CalendarDay(
     day: Int,
     studies: List<StudyEntry>,
     scheduledStudies: List<ScheduledStudy>,
+    reviews: List<ReviewSchedule>,
     isToday: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -426,7 +459,8 @@ private fun CalendarDay(
             .background(
                 color = when {
                     isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
-                    scheduledStudies.isNotEmpty() -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                    scheduledStudies.isNotEmpty() || reviews.isNotEmpty() ->
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
                     studies.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     else -> MaterialTheme.colorScheme.surface
                 },
@@ -463,17 +497,25 @@ private fun CalendarDay(
             }
         )
 
-        if (studies.isNotEmpty() || scheduledStudies.isNotEmpty()) {
+        if (studies.isNotEmpty() || scheduledStudies.isNotEmpty() || reviews.isNotEmpty()) {
             Spacer(modifier = Modifier.height(2.dp))
+            val scheduledMarker = scheduledStudies.firstOrNull()?.let {
+                stringResource(R.string.scheduled_day_marker, it.subject)
+            }
+            val reviewMarker = reviews.firstOrNull()?.let {
+                stringResource(R.string.review_day_marker, it.subject)
+            }
+            val studyMarker = if (scheduledMarker == null && reviewMarker == null) {
+                studies.firstOrNull()?.let {
+                    if (studies.size > 1) "${it.subject} +${studies.size - 1}" else it.subject
+                }
+            } else {
+                null
+            }
+            val markers = listOfNotNull(scheduledMarker, reviewMarker, studyMarker)
             Text(
-                text = if (scheduledStudies.isNotEmpty()) {
-                    stringResource(R.string.scheduled_day_marker, scheduledStudies.first().subject)
-                } else if (studies.size > 1) {
-                    "${studies.first().subject} +${studies.size - 1}"
-                } else {
-                    studies.first().subject
-                },
-                color = if (scheduledStudies.isNotEmpty()) {
+                text = markers.joinToString("\n"),
+                color = if (scheduledStudies.isNotEmpty() || reviews.isNotEmpty()) {
                     MaterialTheme.colorScheme.tertiary
                 } else {
                     MaterialTheme.colorScheme.primary
@@ -486,6 +528,86 @@ private fun CalendarDay(
             )
         }
     }
+}
+
+@Composable
+private fun ReviewScheduleRow(
+    review: ReviewSchedule,
+    onReschedule: (LocalDate) -> Unit
+) {
+    var showDatePicker by rememberSaveable(review.subject) { mutableStateOf(false) }
+    val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = MaterialTheme.spacing.extraSmall),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = review.subject,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = review.dueDate.format(dateFormatter),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(onClick = { showDatePicker = true }) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = stringResource(
+                    R.string.reschedule_review_accessibility,
+                    review.subject
+                ),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = review.dueDate
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli(),
+            selectableDates = FutureReviewDates
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            onReschedule(
+                                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            )
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState, title = null)
+        }
+    }
+}
+
+private object FutureReviewDates : androidx.compose.material3.SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() >= LocalDate.now()
+
+    override fun isSelectableYear(year: Int): Boolean = year >= LocalDate.now().year
 }
 
 @Composable
