@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,12 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import com.example.myapplication.R
 import com.example.myapplication.ui.components.NumberInputField
 import com.example.myapplication.ui.theme.spacing
-import java.time.LocalDate
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -62,11 +60,20 @@ fun RegisterStudiedStudyScreen(
         .toLocalDate()
     val sessions = sessionsText.toIntOrNull()
     val duration = durationText.toIntOrNull()
-    val canRegister = subject.isNotBlank() &&
-        summary.isNotBlank() &&
-        sessions != null && sessions > 0 &&
-        duration != null && duration in 1..MAX_TIMER_MINUTES &&
-        selectedDate <= LocalDate.now()
+    val studyToRegister = when {
+        subject.isBlank() -> null
+        summary.isBlank() -> null
+        sessions == null || sessions <= 0 -> null
+        duration == null || duration !in 1..MAX_TIMER_MINUTES -> null
+        selectedDate > LocalDate.now() -> null
+        else -> StudyEntry(
+            date = selectedDate,
+            subject = subject.trim(),
+            description = summary.trim(),
+            durationMinutes = duration,
+            sessionCount = sessions
+        )
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -179,34 +186,13 @@ fun RegisterStudiedStudyScreen(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
         Button(
-            onClick = {
-                val parsedSessions = sessions
-                val parsedDuration = duration
-                if (
-                    subject.isNotBlank() &&
-                    summary.isNotBlank() &&
-                    parsedSessions != null && parsedSessions > 0 &&
-                    parsedDuration != null && parsedDuration in 1..MAX_TIMER_MINUTES &&
-                    selectedDate <= LocalDate.now()
-                ) {
-                    onRegisterStudy(
-                        StudyEntry(
-                            date = selectedDate,
-                            subject = subject.trim(),
-                            description = summary.trim(),
-                            durationMinutes = parsedDuration,
-                            sessionCount = parsedSessions
-                        )
-                    )
-                }
-            },
+            onClick = { studyToRegister?.let(onRegisterStudy) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = canRegister
+            enabled = studyToRegister != null
         ) {
             Text(stringResource(R.string.register_study))
         }
     }
-
 }
 
 private object PastOrTodayStudyDates : androidx.compose.material3.SelectableDates {

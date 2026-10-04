@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -169,256 +170,31 @@ fun CalendarScreen(
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(onClick = { changeMonth(-1) }) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronLeft,
-                            contentDescription = stringResource(R.string.calendar_previous_month)
-                        )
-                    }
-                    Text(
-                        text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
-                            .replaceFirstChar { it.titlecase(locale) },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    IconButton(onClick = { changeMonth(1) }) {
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = stringResource(R.string.calendar_next_month)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-                Column(
-                    modifier = Modifier.pointerInput(month, selectedDate) {
-                        var horizontalDrag = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { horizontalDrag = 0f },
-                            onHorizontalDrag = { change, dragAmount ->
-                                change.consume()
-                                horizontalDrag += dragAmount
-                            },
-                            onDragEnd = {
-                                when {
-                                    horizontalDrag > 80f -> changeMonth(-1)
-                                    horizontalDrag < -80f -> changeMonth(1)
-                                }
-                            }
-                        )
-                    }
-                ) {
-                    AnimatedContent(
-                        targetState = month,
-                        transitionSpec = {
-                            val enter = if (targetState.isAfter(initialState)) {
-                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(180))
-                            } else {
-                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(180))
-                            }
-                            val exit = if (targetState.isAfter(initialState)) {
-                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(180))
-                            } else {
-                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(180))
-                            }
-                            ContentTransform(enter, exit, sizeTransform = null)
-                        },
-                        label = "calendar_month_grid"
-                    ) { animatedMonth ->
-                        val animatedLeadingDays =
-                            animatedMonth.dayOfWeek.value - DayOfWeek.MONDAY.value
-                        val animatedWeekCount =
-                            (animatedLeadingDays + animatedMonth.lengthOfMonth() + 6) / 7
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                weekdays.forEach { weekday ->
-                                    Text(
-                                        text = weekday,
-                                        modifier = Modifier.weight(1f),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-                            repeat(animatedWeekCount) { week ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    repeat(7) { weekday ->
-                                        val dayNumber =
-                                            week * 7 + weekday - animatedLeadingDays + 1
-                                        if (dayNumber in 1..animatedMonth.lengthOfMonth()) {
-                                            CalendarDay(
-                                                day = dayNumber,
-                                                studies = studyRecords[
-                                                    animatedMonth.withDayOfMonth(dayNumber)
-                                                ].orEmpty(),
-                                                scheduledStudies = scheduledRecords[
-                                                    animatedMonth.withDayOfMonth(dayNumber)
-                                                ].orEmpty(),
-                                                reviews = reviewRecords[
-                                                    animatedMonth.withDayOfMonth(dayNumber)
-                                                ].orEmpty(),
-                                                isToday = animatedMonth.withDayOfMonth(dayNumber) == today,
-                                                isSelected = animatedMonth.withDayOfMonth(dayNumber) == selectedDate,
-                                                onClick = {
-                                                    selectedDateValue =
-                                                        animatedMonth.withDayOfMonth(dayNumber).toString()
-                                                },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        } else {
-                                            Spacer(modifier = Modifier.weight(1f).height(54.dp))
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(4.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        CalendarMonthCard(
+            month = month,
+            selectedDate = selectedDate,
+            today = today,
+            weekdays = weekdays,
+            studyRecords = studyRecords,
+            scheduledRecords = scheduledRecords,
+            reviewRecords = reviewRecords,
+            onPreviousMonth = { changeMonth(-1) },
+            onNextMonth = { changeMonth(1) },
+            onSelectDate = { selectedDateValue = it.toString() }
+        )
 
         CalendarLegend()
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
-                Text(
-                    text = stringResource(
-                        R.string.calendar_selected_day,
-                        selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", locale))
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-                val selectedStudies = studyRecords[selectedDate].orEmpty()
-                val selectedSchedules = scheduledRecords[selectedDate].orEmpty()
-                val selectedReviews = reviewRecords[selectedDate].orEmpty()
-                if (selectedStudies.isEmpty() && selectedSchedules.isEmpty() &&
-                    selectedReviews.isEmpty()
-                ) {
-                    Text(
-                        text = stringResource(R.string.calendar_no_studies),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    selectedStudies.forEach { study ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = MaterialTheme.spacing.extraSmall),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = MaterialTheme.spacing.small,
-                                        vertical = MaterialTheme.spacing.extraSmall
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = study.subject,
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = stringResource(
-                                        R.string.calendar_study_duration,
-                                        study.durationMinutes
-                                    ),
-                                    modifier = Modifier.padding(
-                                        horizontal = MaterialTheme.spacing.small
-                                    ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                IconButton(
-                                    onClick = { studyPendingDeletion = study },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = stringResource(
-                                            R.string.delete_study_accessibility,
-                                            study.subject
-                                        ),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (selectedSchedules.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    Text(
-                        text = stringResource(R.string.scheduled_studies),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
-                    selectedSchedules.forEach { scheduledStudy ->
-                        ScheduledStudyRow(
-                            study = scheduledStudy,
-                            onCancel = { schedulePendingCancellation = scheduledStudy }
-                        )
-                    }
-                }
-
-                if (selectedReviews.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    Text(
-                        text = stringResource(R.string.calendar_scheduled_reviews),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
-                    selectedReviews.forEach { review ->
-                        ReviewScheduleRow(
-                            review = review,
-                            onReschedule = { date -> onRescheduleReview(review, date) }
-                        )
-                    }
-                }
-            }
-        }
+        CalendarSelectedDayCard(
+            selectedDate = selectedDate,
+            studies = studyRecords[selectedDate].orEmpty(),
+            scheduledStudies = scheduledRecords[selectedDate].orEmpty(),
+            reviews = reviewRecords[selectedDate].orEmpty(),
+            onDeleteStudy = { studyPendingDeletion = it },
+            onCancelScheduledStudy = { schedulePendingCancellation = it },
+            onRescheduleReview = onRescheduleReview
+        )
 
         if (month == currentMonth && selectedDate != today) {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
@@ -439,6 +215,293 @@ fun CalendarScreen(
                     MaterialTheme.colorScheme.primary
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun CalendarSelectedDayCard(
+    selectedDate: LocalDate,
+    studies: List<StudyEntry>,
+    scheduledStudies: List<ScheduledStudy>,
+    reviews: List<ReviewSchedule>,
+    onDeleteStudy: (StudyEntry) -> Unit,
+    onCancelScheduledStudy: (ScheduledStudy) -> Unit,
+    onRescheduleReview: (ReviewSchedule, LocalDate) -> Unit
+) {
+    val locale = Locale.forLanguageTag("pt-BR")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(MaterialTheme.spacing.large)) {
+            Text(
+                text = stringResource(
+                    R.string.calendar_selected_day,
+                    selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy", locale))
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+            if (studies.isEmpty() && scheduledStudies.isEmpty() && reviews.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.calendar_no_studies),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                studies.forEach { study ->
+                    CalendarStudyEntryRow(
+                        study = study,
+                        onDelete = { onDeleteStudy(study) }
+                    )
+                }
+            }
+
+            if (scheduledStudies.isNotEmpty()) {
+                CalendarSectionTitle(
+                    title = R.string.scheduled_studies,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                scheduledStudies.forEach { study ->
+                    ScheduledStudyRow(
+                        study = study,
+                        onCancel = { onCancelScheduledStudy(study) }
+                    )
+                }
+            }
+
+            if (reviews.isNotEmpty()) {
+                CalendarSectionTitle(
+                    title = R.string.calendar_scheduled_reviews,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                reviews.forEach { review ->
+                    ReviewScheduleRow(
+                        review = review,
+                        onReschedule = { date -> onRescheduleReview(review, date) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarStudyEntryRow(
+    study: StudyEntry,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = MaterialTheme.spacing.extraSmall),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = MaterialTheme.spacing.small,
+                    vertical = MaterialTheme.spacing.extraSmall
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = study.subject,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = stringResource(R.string.calendar_study_duration, study.durationMinutes),
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(
+                        R.string.delete_study_accessibility,
+                        study.subject
+                    ),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarSectionTitle(title: Int, color: Color) {
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+    Text(
+        text = stringResource(title),
+        style = MaterialTheme.typography.titleSmall,
+        color = color
+    )
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+}
+
+@Composable
+private fun CalendarMonthCard(
+    month: LocalDate,
+    selectedDate: LocalDate,
+    today: LocalDate,
+    weekdays: List<String>,
+    studyRecords: Map<LocalDate, List<StudyEntry>>,
+    scheduledRecords: Map<LocalDate, List<ScheduledStudy>>,
+    reviewRecords: Map<LocalDate, List<ReviewSchedule>>,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onSelectDate: (LocalDate) -> Unit
+) {
+    val locale = Locale.forLanguageTag("pt-BR")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onPreviousMonth) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronLeft,
+                        contentDescription = stringResource(R.string.calendar_previous_month)
+                    )
+                }
+                Text(
+                    text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))
+                        .replaceFirstChar { it.titlecase(locale) },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = onNextMonth) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = stringResource(R.string.calendar_next_month)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+            Column(
+                modifier = Modifier.pointerInput(month, selectedDate) {
+                    var horizontalDrag = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { horizontalDrag = 0f },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            horizontalDrag += dragAmount
+                        },
+                        onDragEnd = {
+                            when {
+                                horizontalDrag > 80f -> onPreviousMonth()
+                                horizontalDrag < -80f -> onNextMonth()
+                            }
+                        }
+                    )
+                }
+            ) {
+                AnimatedContent(
+                    targetState = month,
+                    transitionSpec = {
+                        val movingForward = targetState.isAfter(initialState)
+                        val enterOffset = if (movingForward) 1 else -1
+                        val exitOffset = -enterOffset
+                        val enter = slideInHorizontally(tween(300)) { enterOffset * it } +
+                            fadeIn(tween(180))
+                        val exit = slideOutHorizontally(tween(300)) { exitOffset * it } +
+                            fadeOut(tween(180))
+                        ContentTransform(enter, exit, sizeTransform = null)
+                    },
+                    label = "calendar_month_grid"
+                ) { animatedMonth ->
+                    CalendarMonthGrid(
+                        month = animatedMonth,
+                        selectedDate = selectedDate,
+                        today = today,
+                        weekdays = weekdays,
+                        studyRecords = studyRecords,
+                        scheduledRecords = scheduledRecords,
+                        reviewRecords = reviewRecords,
+                        onSelectDate = onSelectDate
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarMonthGrid(
+    month: LocalDate,
+    selectedDate: LocalDate,
+    today: LocalDate,
+    weekdays: List<String>,
+    studyRecords: Map<LocalDate, List<StudyEntry>>,
+    scheduledRecords: Map<LocalDate, List<ScheduledStudy>>,
+    reviewRecords: Map<LocalDate, List<ReviewSchedule>>,
+    onSelectDate: (LocalDate) -> Unit
+) {
+    val leadingDays = month.dayOfWeek.value - DayOfWeek.MONDAY.value
+    val weekCount = (leadingDays + month.lengthOfMonth() + 6) / 7
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            weekdays.forEach { weekday ->
+                Text(
+                    text = weekday,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+        repeat(weekCount) { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                repeat(7) { weekday ->
+                    val dayNumber = week * 7 + weekday - leadingDays + 1
+                    if (dayNumber in 1..month.lengthOfMonth()) {
+                        val date = month.withDayOfMonth(dayNumber)
+                        CalendarDay(
+                            day = dayNumber,
+                            studies = studyRecords[date].orEmpty(),
+                            scheduledStudies = scheduledRecords[date].orEmpty(),
+                            reviews = reviewRecords[date].orEmpty(),
+                            isToday = date == today,
+                            isSelected = date == selectedDate,
+                            onClick = { onSelectDate(date) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f).height(54.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
@@ -519,7 +582,7 @@ private fun CalendarDay(
 }
 
 @Composable
-private fun CalendarMarker(color: androidx.compose.ui.graphics.Color) {
+private fun CalendarMarker(color: Color) {
     Box(
         modifier = Modifier
             .size(5.dp)

@@ -113,16 +113,25 @@ fun AppNavigation(
                     navigateToPomodoro(
                         navController,
                         context,
-                        "pomodoro/${Uri.encode(selectedSubject)}?duration=25&sessions=4&isReview=true"
+                        newPomodoroRoute(
+                            subject = selectedSubject,
+                            studyMinutes = 25,
+                            sessionCount = 4,
+                            isReview = true
+                        )
                     )
                 },
                 onStartScheduledStudy = { study ->
                     navigateToPomodoro(
                         navController,
                         context,
-                        "pomodoro/${Uri.encode(study.subject)}?duration=${study.studyMinutes}" +
-                            "&breakDuration=${study.breakMinutes}" +
-                            "&sessions=${study.sessionCount}&scheduledStudyId=${Uri.encode(study.id)}"
+                        newPomodoroRoute(
+                            subject = study.subject,
+                            studyMinutes = study.studyMinutes,
+                            breakMinutes = study.breakMinutes,
+                            sessionCount = study.sessionCount,
+                            scheduledStudyId = study.id
+                        )
                     )
                 },
                 onContinuePomodoro = { session ->
@@ -259,7 +268,12 @@ fun AppNavigation(
                     navigateToPomodoro(
                         navController,
                         context,
-                        "pomodoro/${Uri.encode(subject)}?duration=$durationMinutes&breakDuration=$breakMinutes&sessions=$sessions"
+                        newPomodoroRoute(
+                            subject = subject,
+                            studyMinutes = durationMinutes,
+                            breakMinutes = breakMinutes,
+                            sessionCount = sessions
+                        )
                     )
                 },
                 canStartStudy = activePomodoro == null
@@ -349,6 +363,23 @@ private fun PomodoroSessionState.pomodoroRoute(): String =
     "pomodoro/${Uri.encode(subject)}?duration=$studyMinutes" +
         "&breakDuration=$breakMinutes&sessions=$sessionCount" +
         "&isReview=$isReview&scheduledStudyId=${Uri.encode(scheduledStudyId)}"
+
+private fun newPomodoroRoute(
+    subject: String,
+    studyMinutes: Int,
+    sessionCount: Int,
+    breakMinutes: Int? = null,
+    isReview: Boolean? = null,
+    scheduledStudyId: String? = null
+): String = buildString {
+    append("pomodoro/${Uri.encode(subject)}?duration=$studyMinutes")
+    breakMinutes?.let { append("&breakDuration=$it") }
+    append("&sessions=$sessionCount")
+    isReview?.let { append("&isReview=$it") }
+    scheduledStudyId
+        ?.takeIf { it.isNotBlank() }
+        ?.let { append("&scheduledStudyId=${Uri.encode(it)}") }
+}
 
 private fun navigateToPomodoro(
     navController: NavHostController,

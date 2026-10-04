@@ -135,24 +135,7 @@ fun HomeScreen(
 
         val reviews = studyRepository.dueReviews()
         val allScheduledStudies = studyRepository.scheduled()
-        val activeScheduledStudyId = activePomodoro
-            ?.takeIf {
-                it.phase != PomodoroPhase.COMPLETED && it.scheduledStudyId.isNotEmpty()
-            }
-            ?.scheduledStudyId
-        val activeScheduledStudyExists =
-            allScheduledStudies.any { it.id == activeScheduledStudyId }
-        val upcomingStudies = allScheduledStudies
-            .filter {
-                val isActiveStudy = it.id == activeScheduledStudyId
-                val duplicatesUnmatchedActiveSession =
-                    activeScheduledStudyId != null &&
-                        !activeScheduledStudyExists &&
-                        it.subject.equals(activePomodoro?.subject, ignoreCase = true)
-                (!it.date.isBefore(LocalDate.now()) || isActiveStudy) &&
-                    !duplicatesUnmatchedActiveSession
-            }
-            .sortedWith(compareBy<ScheduledStudy> { it.date }.thenBy { it.subject })
+        val upcomingStudies = upcomingScheduledStudies(allScheduledStudies, activePomodoro)
         HomePlan(
             reviews = reviews,
             scheduledStudies = upcomingStudies,
@@ -181,6 +164,32 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
     }
+}
+
+private fun upcomingScheduledStudies(
+    scheduledStudies: List<ScheduledStudy>,
+    activePomodoro: PomodoroSessionState?,
+    today: LocalDate = LocalDate.now()
+): List<ScheduledStudy> {
+    val activeScheduledStudyId = activePomodoro
+        ?.takeIf {
+            it.phase != PomodoroPhase.COMPLETED && it.scheduledStudyId.isNotEmpty()
+        }
+        ?.scheduledStudyId
+    val activeScheduledStudyExists =
+        scheduledStudies.any { it.id == activeScheduledStudyId }
+
+    return scheduledStudies
+        .filter { study ->
+            val isActiveStudy = study.id == activeScheduledStudyId
+            val duplicatesUnmatchedActiveSession =
+                activeScheduledStudyId != null &&
+                    !activeScheduledStudyExists &&
+                    study.subject.equals(activePomodoro?.subject, ignoreCase = true)
+            (!study.date.isBefore(today) || isActiveStudy) &&
+                !duplicatesUnmatchedActiveSession
+        }
+        .sortedWith(compareBy<ScheduledStudy> { it.date }.thenBy { it.subject })
 }
 
 @Composable
@@ -224,6 +233,99 @@ private fun StartStudyHero(
         }
     }
 }
+
+@Composable
+private fun buildHomePlanEntries(
+    reviews: List<ReviewSchedule>,
+    scheduledStudies: List<ScheduledStudy>,
+    activePomodoro: PomodoroSessionState?,
+    activeScheduledStudy: ScheduledStudy?,
+    hasActiveStudyInPlan: Boolean,
+    dateFormatter: DateTimeFormatter
+): List<HomePlanEntry> {
+    val activeSession = activePomodoro?.takeIf { it.phase != PomodoroPhase.COMPLETED }
+    val today = LocalDate.now()
+    return buildList {
+        activeSession
+            ?.takeIf { !hasActiveStudyInPlan }
+            ?.let { session ->
+                add(
+                    HomePlanEntry(
+                        key = "active:${session.subject}",
+                        title = session.subject,
+                        detail = sessionInProgressLabel(session),
+                        isOverdue = false,
+                        reviewSubject = session.subject,
+                        isInProgress = true
+                    )
+                )
+            }
+
+        reviews.forEach { review ->
+            val reviewSession = activeSession?.takeIf { session ->
+                session.isReview && session.subject.equals(review.subject, ignoreCase = true)
+            }
+            add(
+                HomePlanEntry(
+                    key = "review:${review.subject}",
+                    title = review.subject,
+                    detail = if (reviewSession != null) {
+                        sessionInProgressLabel(reviewSession)
+                    } else {
+                        stringResource(
+                            if (review.dueDate.isBefore(today)) {
+                                R.string.overdue
+                            } else {
+                                R.string.review_today
+                            }
+                        )
+                    },
+                    isOverdue = reviewSession == null && review.dueDate.isBefore(today),
+                    reviewSubject = review.subject,
+                    isInProgress = reviewSession != null
+                )
+            )
+        }
+
+        scheduledStudies.forEach { study ->
+            val scheduledSession = activeSession?.takeIf {
+                activeScheduledStudy?.id == study.id
+            }
+            add(
+                HomePlanEntry(
+                    key = "scheduled:${study.id}",
+                    title = study.subject,
+                    detail = if (scheduledSession != null) {
+                        sessionInProgressLabel(scheduledSession)
+                    } else {
+                        stringResource(
+                            R.string.scheduled_study_date_subject,
+                            study.date.format(dateFormatter),
+                            pluralStringResource(
+                                R.plurals.scheduled_study_settings,
+                                study.sessionCount,
+                                study.sessionCount,
+                                study.studyMinutes,
+                                study.breakMinutes
+                            )
+                        )
+                    },
+                    isOverdue = false,
+                    scheduledStudy = study,
+                    isInProgress = scheduledSession != null
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun sessionInProgressLabel(session: PomodoroSessionState): String =
+    stringResource(
+        R.string.home_session_in_progress,
+        session.currentSession,
+        session.sessionCount
+    )
 
 @Composable
 private fun ActiveSessionHero(
@@ -360,89 +462,15 @@ private fun HomePlan(
     }
     val activeScheduledStudyInPlan = activeScheduledStudy != null
     val hasActiveStudyInPlan = activeReviewInPlan || activeScheduledStudyInPlan
-    val entries = buildList {
-        if (
-            activePomodoro != null &&
-            activePomodoro.phase != PomodoroPhase.COMPLETED &&
-            !hasActiveStudyInPlan
-        ) {
-            add(
-                HomePlanEntry(
-                    key = "active:${activePomodoro.subject}",
-                    title = activePomodoro.subject,
-                    detail = stringResource(
-                        R.string.home_session_in_progress,
-                        activePomodoro.currentSession,
-                        activePomodoro.sessionCount
-                    ),
-                    isOverdue = false,
-                    reviewSubject = activePomodoro.subject,
-                    isInProgress = true
-                )
-            )
-        }
-        reviews.forEach { review ->
-            val isInProgress = activePomodoro?.isReview == true &&
-                activePomodoro.subject.equals(review.subject, ignoreCase = true) &&
-                activePomodoro?.phase != PomodoroPhase.COMPLETED
-            add(
-                HomePlanEntry(
-                    key = "review:${review.subject}",
-                    title = review.subject,
-                    detail = if (isInProgress) {
-                        stringResource(
-                            R.string.home_session_in_progress,
-                            activePomodoro?.currentSession ?: 1,
-                            activePomodoro?.sessionCount ?: 1
-                        )
-                    } else {
-                        stringResource(
-                            if (review.dueDate.isBefore(LocalDate.now())) {
-                                R.string.overdue
-                            } else {
-                                R.string.review_today
-                            }
-                        )
-                    },
-                    isOverdue = !isInProgress && review.dueDate.isBefore(LocalDate.now()),
-                    reviewSubject = review.subject,
-                    isInProgress = isInProgress
-                )
-            )
-        }
-        scheduledStudies.forEach { study ->
-            val isInProgress = activePomodoro?.phase != PomodoroPhase.COMPLETED &&
-                activeScheduledStudy?.id == study.id
-            add(
-                HomePlanEntry(
-                    key = "scheduled:${study.id}",
-                    title = study.subject,
-                    detail = if (isInProgress) {
-                        stringResource(
-                            R.string.home_session_in_progress,
-                            activePomodoro?.currentSession ?: 1,
-                            activePomodoro?.sessionCount ?: 1
-                        )
-                    } else {
-                        stringResource(
-                            R.string.scheduled_study_date_subject,
-                            study.date.format(dateFormatter),
-                            pluralStringResource(
-                                R.plurals.scheduled_study_settings,
-                                study.sessionCount,
-                                study.sessionCount,
-                                study.studyMinutes,
-                                study.breakMinutes
-                            )
-                        )
-                    },
-                    isOverdue = false,
-                    scheduledStudy = study,
-                    isInProgress = isInProgress
-                )
-            )
-        }
-    }
+    val entries = buildHomePlanEntries(
+        reviews = reviews,
+        scheduledStudies = scheduledStudies,
+        activePomodoro = activePomodoro,
+        activeScheduledStudy = activeScheduledStudy,
+        hasActiveStudyInPlan = hasActiveStudyInPlan,
+        dateFormatter = dateFormatter
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -67,21 +67,36 @@ fun PomodoroScreen(
     val restoredSession = remember(context, subject) {
         PomodoroSessionStore.load(context)?.takeIf { it.subject == subject }
     }
-    var studyMinutes by rememberSaveable {
-        mutableIntStateOf(
-            restoredSession?.studyMinutes
-                ?: initialStudyMinutes.coerceIn(1, MAX_TIMER_MINUTES)
-        )
+    val defaultStudyMinutes = (restoredSession?.studyMinutes ?: initialStudyMinutes)
+        .coerceIn(1, MAX_TIMER_MINUTES)
+    val defaultBreakMinutes = (restoredSession?.breakMinutes ?: initialBreakMinutes)
+        .coerceIn(1, MAX_TIMER_MINUTES)
+    val defaultSessionCount = (restoredSession?.sessionCount ?: initialSessionCount)
+        .coerceAtLeast(1)
+    var studyMinutesText by rememberSaveable(subject) {
+        mutableStateOf(defaultStudyMinutes.toString())
     }
-    var breakMinutes by rememberSaveable {
-        mutableIntStateOf(
-            restoredSession?.breakMinutes
-                ?: initialBreakMinutes.coerceIn(1, MAX_TIMER_MINUTES)
-        )
+    var breakMinutesText by rememberSaveable(subject) {
+        mutableStateOf(defaultBreakMinutes.toString())
     }
-    var sessionCount by rememberSaveable {
-        mutableIntStateOf(restoredSession?.sessionCount ?: initialSessionCount.coerceAtLeast(1))
+    var sessionCountText by rememberSaveable(subject) {
+        mutableStateOf(defaultSessionCount.toString())
     }
+    val validStudyMinutes = studyMinutesText.toIntOrNull()
+        ?.takeIf { it in 1..MAX_TIMER_MINUTES }
+    val validBreakMinutes = breakMinutesText.toIntOrNull()
+        ?.takeIf { it in 1..MAX_TIMER_MINUTES }
+    val validSessionCount = sessionCountText.toIntOrNull()?.takeIf { it > 0 }
+    val configurationValid = validStudyMinutes != null &&
+        validBreakMinutes != null &&
+        validSessionCount != null
+    val durationValidationMessage = stringResource(
+        R.string.pomodoro_duration_validation,
+        MAX_TIMER_MINUTES
+    )
+    val studyMinutes = validStudyMinutes ?: defaultStudyMinutes
+    val breakMinutes = validBreakMinutes ?: defaultBreakMinutes
+    val sessionCount = validSessionCount ?: defaultSessionCount
     var session by remember(subject) { mutableStateOf(restoredSession) }
     var summary by rememberSaveable { mutableStateOf("") }
     var studyFinalized by rememberSaveable { mutableStateOf(false) }
@@ -136,6 +151,7 @@ fun PomodoroScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(MaterialTheme.spacing.large),
         verticalArrangement = Arrangement.Top
@@ -184,70 +200,24 @@ fun PomodoroScreen(
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
         if (phase == PomodoroPhase.COMPLETED) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier.padding(MaterialTheme.spacing.large),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = stringResource(R.string.study_finished),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-                    Text(
-                        text = stringResource(
-                            R.string.study_finished_duration,
-                            completedStudyMinutes
-                        ),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-                    Button(
-                        onClick = {
-                            startSession(session)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.add_more_sessions))
-                    }
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    OutlinedTextField(
-                        value = summary,
-                        onValueChange = { summary = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.study_summary)) },
-                        placeholder = { Text(stringResource(R.string.study_summary_hint)) },
-                        minLines = 3
-                    )
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                    Button(
-                        onClick = {
-                            if (!studyFinalized) {
-                                PomodoroNotificationService.reset(context)
-                                onCompleted(
-                                    completedStudyMinutes,
-                                    completedSessionCount,
-                                    summary.trim()
-                                )
-                                studyFinalized = true
-                            }
-                        },
-                        enabled = !studyFinalized,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            stringResource(
-                                if (studyFinalized) R.string.study_finalized else R.string.finish_study
-                            )
+            PomodoroCompletionCard(
+                completedStudyMinutes = completedStudyMinutes,
+                summary = summary,
+                studyFinalized = studyFinalized,
+                onSummaryChange = { summary = it },
+                onAddMoreSessions = { startSession(session) },
+                onFinishStudy = {
+                    if (!studyFinalized) {
+                        PomodoroNotificationService.reset(context)
+                        onCompleted(
+                            completedStudyMinutes,
+                            completedSessionCount,
+                            summary.trim()
                         )
+                        studyFinalized = true
                     }
                 }
-            }
+            )
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -390,7 +360,7 @@ fun PomodoroScreen(
                             onClick = {
                                 val currentSessionState = session
                                 if (currentSessionState == null) {
-                                    startSession()
+                                    if (configurationValid) startSession()
                                 } else if (currentSessionState.isRunning) {
                                     val paused = currentSessionState.snapshot().copy(
                                         isRunning = false,
@@ -408,6 +378,7 @@ fun PomodoroScreen(
                                     PomodoroNotificationService.resume(context)
                                 }
                             },
+                            enabled = session != null || configurationValid,
                             modifier = Modifier.size(68.dp),
                             shape = androidx.compose.foundation.shape.CircleShape,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
@@ -505,41 +476,104 @@ fun PomodoroScreen(
                     ) {
                         NumberInputField(
                             label = stringResource(R.string.study_duration_short),
-                            value = studyMinutes.toString(),
+                            value = studyMinutesText,
                             enabled = !configurationLocked,
-                            onValueChange = { newValue ->
-                                val parsed = newValue.toIntOrNull() ?: 0
-                                if (parsed in 1..MAX_TIMER_MINUTES) {
-                                    studyMinutes = parsed
-                                }
-                            },
+                            onValueChange = { studyMinutesText = it },
+                            isError = validStudyMinutes == null,
+                            supportingText = durationValidationMessage
+                                .takeIf { validStudyMinutes == null },
                             modifier = Modifier.weight(1f)
                         )
                         NumberInputField(
                             label = stringResource(R.string.break_duration_short),
-                            value = breakMinutes.toString(),
+                            value = breakMinutesText,
                             enabled = !configurationLocked,
-                            onValueChange = { newValue ->
-                                val parsed = newValue.toIntOrNull() ?: 0
-                                if (parsed in 1..MAX_TIMER_MINUTES) {
-                                    breakMinutes = parsed
-                                }
-                            },
+                            onValueChange = { breakMinutesText = it },
+                            isError = validBreakMinutes == null,
+                            supportingText = durationValidationMessage
+                                .takeIf { validBreakMinutes == null },
                             modifier = Modifier.weight(1f)
                         )
                     }
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                     NumberInputField(
                         label = stringResource(R.string.number_of_sessions),
-                        value = sessionCount.toString(),
+                        value = sessionCountText,
                         enabled = !configurationLocked,
-                        onValueChange = { newValue ->
-                            val parsed = newValue.toIntOrNull()
-                            if (parsed != null && parsed > 0) sessionCount = parsed
+                        onValueChange = { sessionCountText = it },
+                        isError = validSessionCount == null,
+                        supportingText = if (validSessionCount == null) {
+                            stringResource(R.string.pomodoro_sessions_validation)
+                        } else {
+                            null
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PomodoroCompletionCard(
+    completedStudyMinutes: Int,
+    summary: String,
+    studyFinalized: Boolean,
+    onSummaryChange: (String) -> Unit,
+    onAddMoreSessions: () -> Unit,
+    onFinishStudy: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.study_finished),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+            Text(
+                text = stringResource(R.string.study_finished_duration, completedStudyMinutes),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+            Button(
+                onClick = onAddMoreSessions,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.add_more_sessions))
+            }
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            OutlinedTextField(
+                value = summary,
+                onValueChange = onSummaryChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.study_summary)) },
+                placeholder = { Text(stringResource(R.string.study_summary_hint)) },
+                minLines = 3
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Button(
+                onClick = onFinishStudy,
+                enabled = !studyFinalized,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    stringResource(
+                        if (studyFinalized) {
+                            R.string.study_finalized
+                        } else {
+                            R.string.finish_study
+                        }
+                    )
+                )
             }
         }
     }

@@ -13,7 +13,9 @@ fun NumberInputField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    supportingText: String? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -23,6 +25,8 @@ fun NumberInputField(
         modifier = modifier,
         enabled = enabled,
         label = { Text(label) },
+        isError = isError,
+        supportingText = supportingText?.let { message -> { Text(message) } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )

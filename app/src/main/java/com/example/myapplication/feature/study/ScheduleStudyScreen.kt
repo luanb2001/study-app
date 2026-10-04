@@ -180,7 +180,7 @@ fun ScheduleStudyScreen(
                     value = subject,
                     onValueChange = { subject = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.study_prompt)) },
+                    label = { Text(stringResource(R.string.schedule_subject_prompt)) },
                     placeholder = { Text(stringResource(R.string.subject_example)) },
                     trailingIcon = {
                         if (existingSubjects.isNotEmpty()) {

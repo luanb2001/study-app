@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
@@ -30,7 +31,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -42,6 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +53,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalContext
@@ -79,6 +82,8 @@ private val contributionCellSize = 10.dp
 private val contributionCellGap = 2.dp
 private val contributionColumnStep = contributionCellSize + contributionCellGap
 private val contributionRowHeight = 14.dp
+private val contributionMonthFormatter =
+    DateTimeFormatter.ofPattern("MMM", Locale.forLanguageTag("pt-BR"))
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,36 +140,26 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(MaterialTheme.spacing.large),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(MaterialTheme.spacing.large)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.profile_study_streak),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = progressSummary.streakDays.toString(),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = stringResource(R.string.streak_days),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(42.dp)
+                Text(
+                    text = stringResource(R.string.profile_study_streak),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = progressSummary.streakDays.toString(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.streak_days),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -180,7 +175,7 @@ fun ProfileScreen(
                     modifier = Modifier.weight(1f)
                 )
                 ProfileStatCard(
-                    icon = Icons.Default.MenuBook,
+                    icon = Icons.AutoMirrored.Filled.MenuBook,
                     value = progressSummary.subjectCount.toString(),
                     label = stringResource(R.string.subject_count),
                     modifier = Modifier.weight(1f)
@@ -201,6 +196,8 @@ fun ProfileScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
         ActivityHeatmapCard(
             year = selectedYear,
@@ -226,19 +223,9 @@ fun ProfileScreen(
                     modifier = Modifier.padding(vertical = MaterialTheme.spacing.medium)
                 )
                 SettingsOption(
-                    icon = when (themeMode) {
-                        AppThemeMode.DARK -> Icons.Default.DarkMode
-                        AppThemeMode.LIGHT -> Icons.Default.LightMode
-                        AppThemeMode.SYSTEM -> Icons.Default.Settings
-                    },
+                    icon = themeModeIcon(themeMode),
                     title = stringResource(R.string.profile_theme),
-                    value = stringResource(
-                        when (themeMode) {
-                            AppThemeMode.DARK -> R.string.profile_theme_dark
-                            AppThemeMode.LIGHT -> R.string.profile_theme_light
-                            AppThemeMode.SYSTEM -> R.string.profile_theme_system
-                        }
-                    ),
+                    value = stringResource(themeModeLabel(themeMode)),
                     onClick = { showThemeOptions = true }
                 )
                 HorizontalDivider()
@@ -270,31 +257,62 @@ fun ProfileScreen(
     if (showThemeOptions) {
         AlertDialog(
             onDismissRequest = { showThemeOptions = false },
-            title = { Text(stringResource(R.string.profile_theme)) },
-            text = {
+            title = {
                 Column {
+                    Text(stringResource(R.string.profile_theme))
+                    Text(
+                        text = stringResource(R.string.profile_theme_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                     listOf(
                         AppThemeMode.LIGHT to R.string.profile_theme_light,
                         AppThemeMode.DARK to R.string.profile_theme_dark,
                         AppThemeMode.SYSTEM to R.string.profile_theme_system
                     ).forEach { (mode, label) ->
-                        Text(
-                            text = stringResource(label),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onThemeModeChange(mode)
-                                    showThemeOptions = false
-                                }
-                                .padding(vertical = MaterialTheme.spacing.medium),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Card(
+                            onClick = {
+                                onThemeModeChange(mode)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.Transparent
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = MaterialTheme.spacing.medium),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = themeModeIcon(mode),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = stringResource(label),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = MaterialTheme.spacing.medium),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                RadioButton(
+                                    selected = mode == themeMode,
+                                    onClick = null
+                                )
+                            }
+                        }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showThemeOptions = false }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(R.string.profile_theme_done))
                 }
             }
         )
@@ -303,8 +321,35 @@ fun ProfileScreen(
     if (showAbout) {
         AlertDialog(
             onDismissRequest = { showAbout = false },
-            title = { Text(stringResource(R.string.profile_about)) },
-            text = { Text(stringResource(R.string.profile_about_description)) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_about),
+                        modifier = Modifier.padding(start = MaterialTheme.spacing.small)
+                    )
+                }
+            },
+            text = {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Transparent
+                    )
+                ) {
+                    Text(
+                        text = stringResource(R.string.profile_about_description),
+                        modifier = Modifier.padding(MaterialTheme.spacing.large),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(onClick = { showAbout = false }) {
                     Text(stringResource(R.string.confirm))
@@ -439,26 +484,36 @@ private fun ActivityHeatmapCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(contributionColumnStep * weekCount)
+                                .width(
+                                    contributionColumnStep * weekCount - contributionCellGap
+                                )
                                 .height(16.dp)
                         ) {
                             for (monthNumber in 1..12) {
                                 val monthDate = calendarYear.atMonth(monthNumber).atDay(1)
-                                val weekIndex =
+                                val firstMonthWeek =
                                     ChronoUnit.DAYS.between(firstWeek, monthDate).toInt() / 7
-                                Text(
-                                    text = monthDate.format(
-                                        DateTimeFormatter.ofPattern(
-                                            "MMM",
-                                            Locale.forLanguageTag("pt-BR")
+                                val lastMonthWeek = ChronoUnit.DAYS.between(
+                                    firstWeek,
+                                    monthDate.with(TemporalAdjusters.lastDayOfMonth())
+                                ).toInt() / 7
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = contributionColumnStep * firstMonthWeek)
+                                        .width(
+                                            contributionColumnStep *
+                                                (lastMonthWeek - firstMonthWeek + 1) -
+                                                contributionCellGap
                                         )
-                                    ),
-                                    modifier = Modifier.offset(
-                                        x = contributionColumnStep * weekIndex
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                        .height(16.dp),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    Text(
+                                        text = monthDate.format(contributionMonthFormatter),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
@@ -602,6 +657,18 @@ private fun SettingsOption(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+private fun themeModeIcon(mode: AppThemeMode): ImageVector = when (mode) {
+    AppThemeMode.DARK -> Icons.Default.DarkMode
+    AppThemeMode.LIGHT -> Icons.Default.LightMode
+    AppThemeMode.SYSTEM -> Icons.Default.Settings
+}
+
+private fun themeModeLabel(mode: AppThemeMode): Int = when (mode) {
+    AppThemeMode.DARK -> R.string.profile_theme_dark
+    AppThemeMode.LIGHT -> R.string.profile_theme_light
+    AppThemeMode.SYSTEM -> R.string.profile_theme_system
 }
 
 @Composable

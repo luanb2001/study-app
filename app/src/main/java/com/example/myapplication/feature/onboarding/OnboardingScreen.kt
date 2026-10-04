@@ -61,33 +61,7 @@ private data class OnboardingStep(
 
 @Composable
 fun OnboardingScreen(onFinish: () -> Unit) {
-    val steps = listOf(
-        OnboardingStep(
-            R.string.onboarding_step_subjects_title,
-            R.string.onboarding_step_subjects_description,
-            Icons.Default.AutoStories
-        ),
-        OnboardingStep(
-            R.string.onboarding_step_focus_title,
-            R.string.onboarding_step_focus_description,
-            Icons.Default.Timer
-        ),
-        OnboardingStep(
-            R.string.onboarding_step_reviews_title,
-            R.string.onboarding_step_reviews_description,
-            Icons.Default.Replay
-        ),
-        OnboardingStep(
-            R.string.onboarding_step_schedule_title,
-            R.string.onboarding_step_schedule_description,
-            Icons.Default.CalendarMonth
-        ),
-        OnboardingStep(
-            R.string.onboarding_step_progress_title,
-            R.string.onboarding_step_progress_description,
-            Icons.Default.Insights
-        )
-    )
+    val steps = onboardingSteps()
     var currentStep by rememberSaveable { mutableIntStateOf(0) }
 
     Dialog(
@@ -171,128 +145,181 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                         modifier = Modifier.fillMaxSize(),
                         label = "onboarding_step"
                     ) { animatedStep ->
-                        val step = steps[animatedStep]
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(112.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = step.icon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(56.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-                            Text(
-                                text = stringResource(
-                                    R.string.onboarding_step_counter,
-                                    animatedStep + 1,
-                                    steps.size
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-                            Text(
-                                text = stringResource(step.title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-                            Text(
-                                text = stringResource(step.description),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = MaterialTheme.spacing.medium),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-
-                        }
-                    }
-
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                        steps.indices.forEach { index ->
-                            Box(
-                                modifier = Modifier
-                                    .size(if (index == currentStep) 10.dp else 8.dp)
-                                    .background(
-                                        color = if (index == currentStep) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.outlineVariant
-                                        },
-                                        shape = CircleShape
-                                    )
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    if (currentStep > 0) {
-                        OutlinedButton(
-                            onClick = { currentStep-- },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(stringResource(R.string.onboarding_previous))
-                        }
-                    }
-                    Button(
-                        onClick = {
-                            if (currentStep == steps.lastIndex) {
-                                onFinish()
-                            } else {
-                                currentStep++
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            stringResource(
-                                if (currentStep == steps.lastIndex) {
-                                    R.string.onboarding_start
-                                } else {
-                                    R.string.onboarding_next
-                                }
-                            )
+                        OnboardingStepContent(
+                            step = steps[animatedStep],
+                            pageNumber = animatedStep + 1,
+                            pageCount = steps.size
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                OnboardingStepIndicators(
+                    stepCount = steps.size,
+                    currentStep = currentStep
+                )
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+                OnboardingNavigationControls(
+                    currentStep = currentStep,
+                    lastStep = steps.lastIndex,
+                    onPrevious = { currentStep-- },
+                    onNext = {
+                        if (currentStep == steps.lastIndex) {
+                            onFinish()
+                        } else {
+                            currentStep++
+                        }
+                    }
+                )
             }
+        }
+    }
+}
+
+private fun onboardingSteps() = listOf(
+    OnboardingStep(
+        R.string.onboarding_step_subjects_title,
+        R.string.onboarding_step_subjects_description,
+        Icons.Default.AutoStories
+    ),
+    OnboardingStep(
+        R.string.onboarding_step_focus_title,
+        R.string.onboarding_step_focus_description,
+        Icons.Default.Timer
+    ),
+    OnboardingStep(
+        R.string.onboarding_step_reviews_title,
+        R.string.onboarding_step_reviews_description,
+        Icons.Default.Replay
+    ),
+    OnboardingStep(
+        R.string.onboarding_step_schedule_title,
+        R.string.onboarding_step_schedule_description,
+        Icons.Default.CalendarMonth
+    ),
+    OnboardingStep(
+        R.string.onboarding_step_progress_title,
+        R.string.onboarding_step_progress_description,
+        Icons.Default.Insights
+    )
+)
+
+@Composable
+private fun OnboardingStepContent(
+    step: OnboardingStep,
+    pageNumber: Int,
+    pageCount: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(112.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = step.icon,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+        Text(
+            text = stringResource(R.string.onboarding_step_counter, pageNumber, pageCount),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+        Text(
+            text = stringResource(step.title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        Text(
+            text = stringResource(step.description),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MaterialTheme.spacing.medium),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun OnboardingStepIndicators(stepCount: Int, currentStep: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            repeat(stepCount) { index ->
+                Box(
+                    modifier = Modifier
+                        .size(if (index == currentStep) 10.dp else 8.dp)
+                        .background(
+                            color = if (index == currentStep) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant
+                            },
+                            shape = CircleShape
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingNavigationControls(
+    currentStep: Int,
+    lastStep: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        if (currentStep > 0) {
+            OutlinedButton(
+                onClick = onPrevious,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.onboarding_previous))
+            }
+        }
+        Button(
+            onClick = onNext,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                stringResource(
+                    if (currentStep == lastStep) {
+                        R.string.onboarding_start
+                    } else {
+                        R.string.onboarding_next
+                    }
+                )
+            )
         }
     }
 }

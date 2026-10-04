@@ -62,6 +62,7 @@
     <string name="schedule_study_short">Agendar</string>
     <string name="scheduled_study_date">Dia do estudo</string>
     <string name="select_existing_subject">Selecionar assunto existente</string>
+    <string name="schedule_subject_prompt">Selecione ou digite o assunto que será estudado</string>
     <string name="schedule_new_subject_hint">Selecione um assunto na seta ou digite para criar um novo.</string>
     <string name="scheduled_studies">Estudos agendados</string>
     <string name="upcoming_studies">Próximos estudos</string>
@@ -141,6 +142,8 @@
     <string name="pomodoro_in_progress">%1$s • %2$d:%3$02d restantes</string>
     <string name="pomodoro_finish_pending">Tempo concluído • Finalize para registrar</string>
     <string name="pomodoro_active_label">Estudo em andamento</string>
+    <string name="pomodoro_duration_validation">Informe um valor entre 1 e %1$d minutos.</string>
+    <string name="pomodoro_sessions_validation">Informe pelo menos uma sessão.</string>
     <string name="paused">Pausado</string>
     <string name="pomodoro_notification_paused">Pausado • %1$02d:%2$02d restantes</string>
     <string name="pause">Pausar</string>
@@ -196,6 +199,8 @@
     <string name="profile_sessions">sessões</string>
     <string name="profile_reviews">revisões</string>
     <string name="profile_theme">Tema</string>
+    <string name="profile_theme_description">Escolha como o aplicativo será exibido.</string>
+    <string name="profile_theme_done">Concluído</string>
     <string name="profile_theme_light">Claro</string>
     <string name="profile_theme_dark">Escuro</string>
     <string name="profile_theme_system">Sistema</string>

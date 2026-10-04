@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
+import com.example.myapplication.feature.study.ReviewSchedule
 import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.pomodoro.PomodoroPhase
@@ -131,67 +132,18 @@ fun SubjectsScreen(
     val allEntries = studyRepository.all()
     val reviewDates = studyRepository.reviewSchedules()
         .associateBy { it.subject.lowercase(Locale.ROOT) }
-    val allItems = remember(allEntries, grouping, activeSubject, activeRunning) {
-        val items = allEntries
-            .groupBy { periodStart(it.date, grouping) }
-            .toSortedMap(compareByDescending { it })
-            .flatMap { (periodStart, periodEntries) ->
-                periodEntries
-                    .groupBy { it.subject }
-                    .toSortedMap()
-                    .map { (subject, subjectEntries) ->
-                        SubjectListItem(
-                            key = "${periodStart}_$subject",
-                            periodKey = periodStart.toString(),
-                            periodTitle = periodTitle(periodStart, grouping, locale),
-                            subject = subject,
-                            sessionCount = subjectEntries.sumOf { it.sessionCount },
-                            totalMinutes = subjectEntries.sumOf { it.durationMinutes }
-                        )
-                    }
-            }
-            .toMutableList()
-        activeSubject?.let { subject ->
-            val todayPeriod = periodStart(LocalDate.now(), grouping)
-            val periodKey = todayPeriod.toString()
-            val existingIndex = items.indexOfFirst {
-                it.periodKey == periodKey && it.subject.equals(subject, ignoreCase = true)
-            }
-            if (existingIndex >= 0) {
-                items[existingIndex] = items[existingIndex].copy(
-                    isInProgress = true,
-                    isRunning = activeRunning
-                )
-            } else {
-                items.add(
-                    0,
-                    SubjectListItem(
-                        key = "${periodKey}_$subject",
-                        periodKey = periodKey,
-                        periodTitle = periodTitle(todayPeriod, grouping, locale),
-                        subject = subject,
-                        sessionCount = 0,
-                        totalMinutes = 0,
-                        isInProgress = true,
-                        isRunning = activeRunning
-                    )
-                )
-            }
-        }
-        items
+    val allItems = remember(allEntries, grouping, activeSubject, activeRunning, locale) {
+        buildSubjectListItems(
+            entries = allEntries,
+            grouping = grouping,
+            activeSubject = activeSubject,
+            activeRunning = activeRunning,
+            locale = locale
+        )
     }
     val matchingItems = allItems.filter { item ->
         val schedule = reviewDates[item.subject.lowercase(Locale.ROOT)]
-        val due = schedule != null && !schedule.dueDate.isAfter(LocalDate.now())
-        val overdue = schedule != null && schedule.dueDate.isBefore(LocalDate.now())
-        val matchesSearch = item.subject.contains(searchQuery.trim(), ignoreCase = true)
-        val matchesFilter = when (subjectFilter) {
-            SubjectFilter.ALL -> true
-            SubjectFilter.ON_TRACK -> schedule != null && !due
-            SubjectFilter.DUE -> due && !overdue
-            SubjectFilter.OVERDUE -> overdue
-        }
-        matchesSearch && matchesFilter
+        item.matchesFilter(searchQuery, subjectFilter, schedule)
     }
     val visibleItems = matchingItems.take(loadedCount)
     val visibleGroups = visibleItems.groupBy { it.periodKey }
@@ -333,19 +285,12 @@ fun SubjectsScreen(
                         totalMinutes = subjectItem.totalMinutes,
                         isInProgress = subjectItem.isInProgress,
                         isRunning = subjectItem.isRunning,
-                        statusColor = when {
-                            subjectItem.isInProgress -> SuccessGreen
-                            reviewDates[subjectItem.subject.lowercase(Locale.ROOT)]
-                                ?.dueDate?.isBefore(LocalDate.now()) == true ->
-                                MaterialTheme.colorScheme.tertiary
-                            reviewDates[subjectItem.subject.lowercase(Locale.ROOT)]
-                                ?.dueDate == LocalDate.now() ->
-                                AttentionAmber
-                            reviewDates[subjectItem.subject.lowercase(Locale.ROOT)]
-                                ?.dueDate?.isAfter(LocalDate.now()) == true ->
-                                SuccessGreen
-                            else -> MaterialTheme.colorScheme.primary
-                        },
+                        statusColor = subjectStatusColor(
+                            item = subjectItem,
+                            reviewSchedule = reviewDates[
+                                subjectItem.subject.lowercase(Locale.ROOT)
+                            ]
+                        ),
                         onClick = { onOpenSubject(subjectItem.subject) }
                     )
                 }
@@ -367,6 +312,97 @@ fun SubjectsScreen(
         item {
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
         }
+    }
+}
+
+private fun buildSubjectListItems(
+    entries: List<StudyEntry>,
+    grouping: StudyGrouping,
+    activeSubject: String?,
+    activeRunning: Boolean,
+    locale: Locale
+): List<SubjectListItem> {
+    val items = entries
+        .groupBy { periodStart(it.date, grouping) }
+        .toSortedMap(compareByDescending { it })
+        .flatMap { (periodStart, periodEntries) ->
+            periodEntries
+                .groupBy { it.subject }
+                .toSortedMap()
+                .map { (subject, subjectEntries) ->
+                    SubjectListItem(
+                        key = "${periodStart}_$subject",
+                        periodKey = periodStart.toString(),
+                        periodTitle = periodTitle(periodStart, grouping, locale),
+                        subject = subject,
+                        sessionCount = subjectEntries.sumOf { it.sessionCount },
+                        totalMinutes = subjectEntries.sumOf { it.durationMinutes }
+                    )
+                }
+        }
+        .toMutableList()
+
+    activeSubject?.let { subject ->
+        val todayPeriod = periodStart(LocalDate.now(), grouping)
+        val periodKey = todayPeriod.toString()
+        val existingIndex = items.indexOfFirst {
+            it.periodKey == periodKey && it.subject.equals(subject, ignoreCase = true)
+        }
+        if (existingIndex >= 0) {
+            items[existingIndex] = items[existingIndex].copy(
+                isInProgress = true,
+                isRunning = activeRunning
+            )
+        } else {
+            items.add(
+                0,
+                SubjectListItem(
+                    key = "${periodKey}_$subject",
+                    periodKey = periodKey,
+                    periodTitle = periodTitle(todayPeriod, grouping, locale),
+                    subject = subject,
+                    sessionCount = 0,
+                    totalMinutes = 0,
+                    isInProgress = true,
+                    isRunning = activeRunning
+                )
+            )
+        }
+    }
+    return items
+}
+
+private fun SubjectListItem.matchesFilter(
+    query: String,
+    filter: SubjectFilter,
+    reviewSchedule: ReviewSchedule?,
+    today: LocalDate = LocalDate.now()
+): Boolean {
+    val due = reviewSchedule != null && !reviewSchedule.dueDate.isAfter(today)
+    val overdue = reviewSchedule != null && reviewSchedule.dueDate.isBefore(today)
+    val matchesSearch = subject.contains(query.trim(), ignoreCase = true)
+    val matchesStatus = when (filter) {
+        SubjectFilter.ALL -> true
+        SubjectFilter.ON_TRACK -> reviewSchedule != null && !due
+        SubjectFilter.DUE -> due && !overdue
+        SubjectFilter.OVERDUE -> overdue
+    }
+    return matchesSearch && matchesStatus
+}
+
+@Composable
+private fun subjectStatusColor(
+    item: SubjectListItem,
+    reviewSchedule: ReviewSchedule?
+): Color {
+    val today = LocalDate.now()
+    return when {
+        item.isInProgress -> SuccessGreen
+        reviewSchedule?.dueDate?.isBefore(today) == true ->
+            MaterialTheme.colorScheme.tertiary
+        reviewSchedule?.dueDate == today -> AttentionAmber
+        reviewSchedule?.dueDate?.isAfter(today) == true -> SuccessGreen
+        else -> MaterialTheme.colorScheme.primary
     }
 }
 
