@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,9 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -64,6 +67,8 @@ import com.example.myapplication.feature.study.ScheduledStudy
 import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.ui.components.ConfirmActionDialog
+import com.example.myapplication.ui.theme.AttentionAmber
+import com.example.myapplication.ui.theme.SuccessGreen
 import com.example.myapplication.ui.theme.spacing
 import java.time.DayOfWeek
 import java.time.Instant
@@ -283,7 +288,7 @@ fun CalendarScreen(
                                                 modifier = Modifier.weight(1f)
                                             )
                                         } else {
-                                            Spacer(modifier = Modifier.weight(1f).height(76.dp))
+                                            Spacer(modifier = Modifier.weight(1f).height(54.dp))
                                         }
                                     }
                                 }
@@ -295,6 +300,8 @@ fun CalendarScreen(
                 }
             }
         }
+
+        CalendarLegend()
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
         Card(
@@ -384,7 +391,7 @@ fun CalendarScreen(
                     Text(
                         text = stringResource(R.string.scheduled_studies),
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
                     selectedSchedules.forEach { scheduledStudy ->
@@ -450,7 +457,7 @@ private fun CalendarDay(
     val shape = RoundedCornerShape(8.dp)
     Column(
         modifier = modifier
-            .height(76.dp)
+            .height(54.dp)
             .selectable(
                 selected = isSelected,
                 role = Role.Button,
@@ -459,8 +466,10 @@ private fun CalendarDay(
             .background(
                 color = when {
                     isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
-                    scheduledStudies.isNotEmpty() || reviews.isNotEmpty() ->
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                    reviews.isNotEmpty() ->
+                        AttentionAmber.copy(alpha = 0.14f)
+                    scheduledStudies.isNotEmpty() ->
+                        MaterialTheme.colorScheme.secondaryContainer
                     studies.isNotEmpty() -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     else -> MaterialTheme.colorScheme.surface
                 },
@@ -497,34 +506,48 @@ private fun CalendarDay(
             }
         )
 
-        if (studies.isNotEmpty() || scheduledStudies.isNotEmpty() || reviews.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(2.dp))
-            val scheduledMarker = scheduledStudies.firstOrNull()?.let {
-                stringResource(R.string.scheduled_day_marker, it.subject)
-            }
-            val reviewMarker = reviews.firstOrNull()?.let {
-                stringResource(R.string.review_day_marker, it.subject)
-            }
-            val studyMarker = if (scheduledMarker == null && reviewMarker == null) {
-                studies.firstOrNull()?.let {
-                    if (studies.size > 1) "${it.subject} +${studies.size - 1}" else it.subject
-                }
-            } else {
-                null
-            }
-            val markers = listOfNotNull(scheduledMarker, reviewMarker, studyMarker)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (studies.isNotEmpty()) CalendarMarker(SuccessGreen)
+            if (reviews.isNotEmpty()) CalendarMarker(AttentionAmber)
+            if (scheduledStudies.isNotEmpty()) CalendarMarker(MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
+private fun CalendarMarker(color: androidx.compose.ui.graphics.Color) {
+    Box(
+        modifier = Modifier
+            .size(5.dp)
+            .background(color, CircleShape)
+    )
+}
+
+@Composable
+private fun CalendarLegend() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = MaterialTheme.spacing.medium),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        listOf(
+            R.string.calendar_legend_study to MaterialTheme.colorScheme.primary,
+            R.string.calendar_legend_review to AttentionAmber,
+            R.string.calendar_legend_scheduled to MaterialTheme.colorScheme.secondary
+        ).forEachIndexed { index, (label, color) ->
+            if (index > 0) Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            CalendarMarker(color)
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
             Text(
-                text = markers.joinToString("\n"),
-                color = if (scheduledStudies.isNotEmpty() || reviews.isNotEmpty()) {
-                    MaterialTheme.colorScheme.tertiary
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-                fontSize = 10.sp,
-                lineHeight = 11.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                text = stringResource(label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -622,7 +645,7 @@ private fun ScheduledStudyRow(study: ScheduledStudy, onCancel: () -> Unit) {
             Text(
                 text = study.subject,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.tertiary
+                color = MaterialTheme.colorScheme.secondary
             )
             Text(
                 text = pluralStringResource(

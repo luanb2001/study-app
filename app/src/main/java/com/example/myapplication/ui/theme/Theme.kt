@@ -2,14 +2,24 @@ package com.example.myapplication.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp)
+)
 
 private val LightColorScheme = lightColorScheme(
     primary = MutedBlue,
@@ -17,9 +27,9 @@ private val LightColorScheme = lightColorScheme(
     primaryContainer = MutedBlueContainer,
     onPrimaryContainer = OnMutedBlueContainer,
     secondary = SageGreen,
-    onSecondary = OffWhite,
+    onSecondary = SoftGrey,
     secondaryContainer = SageGreenContainer,
-    onSecondaryContainer = OnSageGreenContainer,
+    onSecondaryContainer = Charcoal,
     tertiary = SoftTerracotta,
     onTertiary = OffWhite,
     tertiaryContainer = TerracottaContainer,
@@ -40,14 +50,14 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = MutedBlueLight,
+    primary = DarkMint,
     onPrimary = DarkBackground,
-    primaryContainer = DarkBlueContainer,
+    primaryContainer = DarkPrimary,
     onPrimaryContainer = OnDarkBlueContainer,
-    secondary = SageGreenLight,
+    secondary = DarkMint,
     onSecondary = DarkBackground,
-    secondaryContainer = DarkGreenContainer,
-    onSecondaryContainer = OnDarkGreenContainer,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = OnDarkText,
     tertiary = SoftTerracottaLight,
     onTertiary = DarkBackground,
     tertiaryContainer = DarkTerracottaContainer,
@@ -61,8 +71,8 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = OnDarkSubtext,
     outline = DarkBorder,
     outlineVariant = DarkBorder,
-    surfaceTint = MutedBlueLight,
-    inversePrimary = MutedBlue,
+    surfaceTint = DarkMint,
+    inversePrimary = DarkMint,
     inverseSurface = OnDarkText,
     inverseOnSurface = DarkBackground
 )
@@ -92,6 +102,7 @@ fun MyApplicationTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }

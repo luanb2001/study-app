@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit
 
 object Data {
     // Set to false to disable all seeded demonstration data in the local repository.
-    const val ENABLED = false
+    const val ENABLED = true
 
     val studyEntries: List<StudyEntry> = createStudyEntries()
 
@@ -18,14 +18,16 @@ object Data {
                     subject = "Kotlin",
                     sessionCount = 2,
                     studyMinutes = 25,
-                    breakMinutes = 5
+                    breakMinutes = 5,
+                    id = "mock-scheduled-kotlin"
                 ),
                 ScheduledStudy(
                     date = today.plusDays(3),
                     subject = "Compose",
                     sessionCount = 3,
                     studyMinutes = 30,
-                    breakMinutes = 5
+                    breakMinutes = 5,
+                    id = "mock-scheduled-compose"
                 )
             )
         }

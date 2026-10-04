@@ -7,12 +7,14 @@ import android.os.Build
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
@@ -47,22 +50,25 @@ private data class BottomNavigationDestination(
 )
 
 private val bottomNavigationDestinations = listOf(
-    BottomNavigationDestination(Routes.HOME, R.string.nav_home, Icons.Default.Home),
+    BottomNavigationDestination(Routes.HOME, R.string.nav_home, Icons.Outlined.Home),
     BottomNavigationDestination(
         Routes.CALENDAR,
         R.string.nav_calendar,
-        Icons.Default.CalendarMonth
+        Icons.Outlined.CalendarMonth
     ),
     BottomNavigationDestination(
         Routes.SUBJECTS,
         R.string.nav_subjects,
-        Icons.AutoMirrored.Filled.MenuBook
+        Icons.AutoMirrored.Outlined.MenuBook
     ),
-    BottomNavigationDestination(Routes.PROFILE, R.string.nav_profile, Icons.Default.Person)
+    BottomNavigationDestination(Routes.PROFILE, R.string.nav_profile, Icons.Outlined.Person)
 )
 
 @Composable
-fun StudyApp() {
+fun StudyApp(
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    onThemeModeChange: (AppThemeMode) -> Unit = {}
+) {
     val context = LocalContext.current
     val studyRepository = remember(context) {
         LocalStudyRepository(context.applicationContext)
@@ -96,6 +102,7 @@ fun StudyApp() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             BottomNavigation(navController)
         }
@@ -103,6 +110,8 @@ fun StudyApp() {
         AppNavigation(
             navController = navController,
             studyRepository = studyRepository,
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -125,13 +134,21 @@ fun BottomNavigation(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
+    ) {
         bottomNavigationDestinations.forEach { destination ->
             val isSelected = currentRoute == destination.route ||
                 (destination.route == Routes.SUBJECTS &&
                     currentRoute == Routes.SUBJECT_DETAIL)
             NavigationBarItem(
                 selected = isSelected,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                ),
                 onClick = {
                     navController.navigate(destination.route) {
                         popUpTo(navController.graph.startDestinationId) {

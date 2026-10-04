@@ -1,5 +1,6 @@
 package com.example.myapplication.navigation
 
+import com.example.myapplication.AppThemeMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +53,8 @@ object Routes {
 fun AppNavigation(
     navController: NavHostController,
     studyRepository: StudyRepository,
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -69,16 +72,32 @@ fun AppNavigation(
         startDestination = Routes.HOME,
         modifier = modifier,
         enterTransition = {
-            slideInHorizontally(tween(250)) { it } + fadeIn(tween(180))
+            val direction = navigationDirection(
+                initialState.destination.route,
+                targetState.destination.route
+            )
+            slideInHorizontally(tween(250)) { direction * it } + fadeIn(tween(180))
         },
         exitTransition = {
-            slideOutHorizontally(tween(250)) { -it } + fadeOut(tween(180))
+            val direction = navigationDirection(
+                initialState.destination.route,
+                targetState.destination.route
+            )
+            slideOutHorizontally(tween(250)) { -direction * it } + fadeOut(tween(180))
         },
         popEnterTransition = {
-            slideInHorizontally(tween(250)) { -it } + fadeIn(tween(180))
+            val direction = navigationDirection(
+                initialState.destination.route,
+                targetState.destination.route
+            )
+            slideInHorizontally(tween(250)) { direction * it } + fadeIn(tween(180))
         },
         popExitTransition = {
-            slideOutHorizontally(tween(250)) { it } + fadeOut(tween(180))
+            val direction = navigationDirection(
+                initialState.destination.route,
+                targetState.destination.route
+            )
+            slideOutHorizontally(tween(250)) { -direction * it } + fadeOut(tween(180))
         }
     ) {
         composable(Routes.HOME) {
@@ -108,6 +127,11 @@ fun AppNavigation(
                 },
                 onContinuePomodoro = { session ->
                     navController.navigate(session.pomodoroRoute())
+                },
+                onSeeProgress = {
+                    navController.navigate(Routes.PROFILE) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -125,7 +149,11 @@ fun AppNavigation(
         }
 
         composable(Routes.PROFILE) {
-            ProfileScreen(studyRepository = studyRepository)
+            ProfileScreen(
+                studyRepository = studyRepository,
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange
+            )
         }
 
         composable(Routes.SUBJECTS) {
@@ -301,6 +329,20 @@ fun AppNavigation(
         }
     }
 
+}
+
+private fun navigationDirection(initialRoute: String?, targetRoute: String?): Int {
+    val initialPosition = routePosition(initialRoute)
+    val targetPosition = routePosition(targetRoute)
+    return if (targetPosition >= initialPosition) 1 else -1
+}
+
+private fun routePosition(route: String?): Int = when {
+    route == Routes.HOME -> 0
+    route == Routes.CALENDAR -> 1
+    route == Routes.SUBJECTS || route?.startsWith("subject/") == true -> 2
+    route == Routes.PROFILE -> 3
+    else -> 0
 }
 
 private fun PomodoroSessionState.pomodoroRoute(): String =

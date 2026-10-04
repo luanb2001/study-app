@@ -2,6 +2,11 @@ package com.example.myapplication.feature.pomodoro
 
 import android.os.SystemClock
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,11 +23,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,11 +40,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.feature.study.MAX_TIMER_MINUTES
 import com.example.myapplication.ui.components.NumberInputField
+import com.example.myapplication.ui.theme.SuccessGreen
 import com.example.myapplication.ui.theme.spacing
 import kotlinx.coroutines.delay
 
@@ -122,12 +133,6 @@ fun PomodoroScreen(
         PomodoroNotificationService.start(context, newSession)
     }
 
-    val phaseLabel = when (phase) {
-        PomodoroPhase.STUDY -> stringResource(R.string.pomodoro_study)
-        PomodoroPhase.BREAK -> stringResource(R.string.pomodoro_break)
-        PomodoroPhase.COMPLETED -> stringResource(R.string.pomodoro_completed)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -136,6 +141,7 @@ fun PomodoroScreen(
         verticalArrangement = Arrangement.Top
     ) {
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
@@ -145,11 +151,34 @@ fun PomodoroScreen(
                 )
             }
 
-            Text(
-                text = subject,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = subject,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                if (phase != PomodoroPhase.COMPLETED) {
+                    Text(
+                        text = stringResource(
+                            R.string.pomodoro_session_count,
+                            currentSession,
+                            sessionCount
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            IconButton(onClick = onBack, enabled = false) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.surface
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -228,42 +257,101 @@ fun PomodoroScreen(
                     modifier = Modifier.padding(MaterialTheme.spacing.extraLarge),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Surface(
-                        color = if (phase == PomodoroPhase.BREAK) {
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        },
-                        shape = MaterialTheme.shapes.large
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.shapes.large
+                            )
+                            .padding(4.dp)
                     ) {
-                        Text(
-                            text = phaseLabel,
-                            modifier = Modifier.padding(
-                                horizontal = MaterialTheme.spacing.large,
-                                vertical = MaterialTheme.spacing.small
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (phase == PomodoroPhase.BREAK) {
-                                MaterialTheme.colorScheme.tertiary
-                            } else {
-                                MaterialTheme.colorScheme.primary
+                        listOf(
+                            PomodoroPhase.STUDY to R.string.pomodoro_study,
+                            PomodoroPhase.BREAK to R.string.pomodoro_break
+                        ).forEach { (phaseOption, labelResource) ->
+                            val selected = phase == phaseOption
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                shape = MaterialTheme.shapes.large
+                            ) {
+                                Text(
+                                    text = stringResource(labelResource),
+                                    modifier = Modifier.padding(vertical = MaterialTheme.spacing.small),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
                             }
-                        )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-                    Text(
-                        text = stringResource(
-                            R.string.pomodoro_time_format,
-                            remainingSeconds / 60,
-                            remainingSeconds % 60
-                        ),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    val phaseDuration = (if (phase == PomodoroPhase.BREAK) {
+                        breakMinutes
+                    } else {
+                        studyMinutes
+                    }) * 60
+                    val progress = (phaseDuration - remainingSeconds)
+                        .coerceIn(0, phaseDuration)
+                        .toFloat() / phaseDuration
+                    val ringColor = if (phase == PomodoroPhase.BREAK) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        SuccessGreen
+                    }
+                    val ringTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    Box(
+                        modifier = Modifier.size(232.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val strokeWidth = 10.dp.toPx()
+                            drawCircle(
+                                color = ringTrackColor,
+                                style = Stroke(width = strokeWidth)
+                            )
+                            drawArc(
+                                color = ringColor,
+                                startAngle = -90f,
+                                sweepAngle = progress * 360f,
+                                useCenter = false,
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(
+                                    R.string.pomodoro_time_format,
+                                    remainingSeconds / 60,
+                                    remainingSeconds % 60
+                                ),
+                                style = MaterialTheme.typography.displayLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.pomodoro_time_total,
+                                    phaseDuration / 60,
+                                    0
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
                     Text(
                         text = stringResource(
@@ -271,7 +359,7 @@ fun PomodoroScreen(
                             currentSession,
                             sessionCount
                         ),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
@@ -279,8 +367,25 @@ fun PomodoroScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            IconButton(onClick = { resetPomodoro() }) {
+                                Icon(
+                                    Icons.Default.RestartAlt,
+                                    contentDescription = stringResource(R.string.reset)
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.reset),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Button(
                             onClick = {
                                 val currentSessionState = session
@@ -303,30 +408,85 @@ fun PomodoroScreen(
                                     PomodoroNotificationService.resume(context)
                                 }
                             },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.size(68.dp),
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                         ) {
-                            Text(
-                                stringResource(
+                            Icon(
+                                imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = stringResource(
                                     when {
                                         isRunning -> R.string.pause
                                         session != null -> R.string.resume_study
                                         else -> R.string.start
                                     }
-                                )
+                                ),
+                                modifier = Modifier.size(32.dp)
                             )
                         }
-
-                        OutlinedButton(
-                            onClick = { resetPomodoro() },
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(stringResource(R.string.reset))
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = stringResource(R.string.back)
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.back),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+            if (phase != PomodoroPhase.COMPLETED) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                val nextPhase = if (phase == PomodoroPhase.STUDY) {
+                    R.string.pomodoro_break
+                } else {
+                    R.string.pomodoro_study
+                }
+                val nextDuration = if (phase == PomodoroPhase.STUDY) {
+                    breakMinutes
+                } else {
+                    studyMinutes
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(MaterialTheme.spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                        Text(
+                            text = stringResource(
+                                R.string.pomodoro_next_phase,
+                                stringResource(nextPhase),
+                                nextDuration
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
