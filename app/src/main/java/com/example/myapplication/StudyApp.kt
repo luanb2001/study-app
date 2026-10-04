@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -36,6 +37,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.feature.onboarding.OnboardingScreen
+import com.example.myapplication.feature.pomodoro.PomodoroPictureInPictureScreen
 import com.example.myapplication.feature.study.LocalStudyRepository
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.study.reminder.ReviewReminderScheduler
@@ -67,6 +69,8 @@ private val bottomNavigationDestinations = listOf(
 @Composable
 fun StudyApp(
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    isInPictureInPictureMode: Boolean = false,
+    onPomodoroRunningChange: (Boolean) -> Unit = {},
     onThemeModeChange: (AppThemeMode) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -104,16 +108,24 @@ fun StudyApp(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            BottomNavigation(navController)
+            if (!isInPictureInPictureMode) {
+                BottomNavigation(navController)
+            }
         }
     ) { innerPadding ->
-        AppNavigation(
-            navController = navController,
-            studyRepository = studyRepository,
-            themeMode = themeMode,
-            onThemeModeChange = onThemeModeChange,
-            modifier = Modifier.padding(innerPadding),
-        )
+        Box(modifier = Modifier.padding(innerPadding)) {
+            AppNavigation(
+                navController = navController,
+                studyRepository = studyRepository,
+                themeMode = themeMode,
+                onPomodoroRunningChange = onPomodoroRunningChange,
+                onThemeModeChange = onThemeModeChange,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (isInPictureInPictureMode) {
+                PomodoroPictureInPictureScreen(modifier = Modifier.fillMaxSize())
+            }
+        }
     }
 
     if (!hasCompletedOnboarding) {

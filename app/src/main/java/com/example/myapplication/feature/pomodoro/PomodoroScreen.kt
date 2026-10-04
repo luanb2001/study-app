@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -511,6 +512,62 @@ fun PomodoroScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PomodoroPictureInPictureScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var session by remember(context) {
+        mutableStateOf(PomodoroSessionStore.load(context))
+    }
+    LaunchedEffect(context) {
+        while (true) {
+            session = PomodoroSessionStore.load(context)
+            delay(250L)
+        }
+    }
+    val activeSession = session?.takeIf { it.phase != PomodoroPhase.COMPLETED }
+    val remainingSeconds = activeSession?.currentRemainingSeconds() ?: 0
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = activeSession?.subject.orEmpty(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(
+                        if (activeSession?.phase == PomodoroPhase.BREAK) {
+                            R.string.pomodoro_break
+                        } else {
+                            R.string.pomodoro_study
+                        }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = stringResource(
+                    R.string.pomodoro_time_format,
+                    remainingSeconds / 60,
+                    remainingSeconds % 60
+                ),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

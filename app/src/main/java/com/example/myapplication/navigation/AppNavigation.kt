@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import com.example.myapplication.feature.calendar.CalendarScreen
 import com.example.myapplication.feature.home.HomeScreen
 import com.example.myapplication.feature.pomodoro.PomodoroScreen
+import com.example.myapplication.feature.pomodoro.PomodoroPhase
 import com.example.myapplication.feature.pomodoro.PomodoroSessionStore
 import com.example.myapplication.feature.pomodoro.PomodoroSessionState
 import com.example.myapplication.feature.profile.ProfileScreen
@@ -54,6 +55,7 @@ fun AppNavigation(
     navController: NavHostController,
     studyRepository: StudyRepository,
     themeMode: AppThemeMode,
+    onPomodoroRunningChange: (Boolean) -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -66,6 +68,12 @@ fun AppNavigation(
             activePomodoro = PomodoroSessionStore.load(context)
             delay(500L)
         }
+    }
+    val isPomodoroRunning = activePomodoro?.let { session ->
+        session.isRunning && session.phase != PomodoroPhase.COMPLETED
+    } == true
+    LaunchedEffect(isPomodoroRunning) {
+        onPomodoroRunningChange(isPomodoroRunning)
     }
     NavHost(
         navController = navController,
