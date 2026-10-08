@@ -20,9 +20,11 @@ class LocalStudyRepository(
 
     override fun all(): List<StudyEntry> = buildList {
         addAll(studyEntries)
+
         if (Data.ENABLED) {
             addAll(Data.studyEntries.filterNot { it.id in deletedStudyIds })
         }
+
     }
 
     override fun scheduled(): List<ScheduledStudy> = buildList {
@@ -39,6 +41,7 @@ class LocalStudyRepository(
         effectiveReviewSchedules().sortedBy { it.dueDate }
 
     override fun progressSummary(): StudyProgressSummary =
+
         if (Data.ENABLED && studyEntries.isEmpty()) {
             Data.progressSummary
         } else {
@@ -65,8 +68,40 @@ class LocalStudyRepository(
         } else {
             reviewSchedules[scheduleIndex] = nextSchedule
         }
+
         studyDataStore.saveStudies(studyEntries)
         reviewScheduleStore.save(reviewSchedules)
+    }
+
+    override fun completeFlashcardReview(subject: String, difficulty: ReviewDifficulty): ReviewSchedule {
+        val existingSchedule = effectiveReviewSchedules().firstOrNull {
+            it.subject.equals(subject, ignoreCase = true)
+        }
+        val currentIntervalIndex = existingSchedule?.intervalIndex ?: 0
+        val nextIntervalIndex = SpacedRepetitionSchedule.intervalIndexAfterReview(
+            currentIntervalIndex,
+            difficulty
+        )
+        val nextSchedule = ReviewSchedule(
+            subject = existingSchedule?.subject ?: subject,
+            dueDate = SpacedRepetitionSchedule.dueDate(
+                LocalDate.now(),
+                nextIntervalIndex
+            ),
+            intervalIndex = nextIntervalIndex
+        )
+        val scheduleIndex = reviewSchedules.indexOfFirst {
+            it.subject.equals(subject, ignoreCase = true)
+        }
+
+        if (scheduleIndex == -1) {
+            reviewSchedules.add(nextSchedule)
+        } else {
+            reviewSchedules[scheduleIndex] = nextSchedule
+        }
+
+        reviewScheduleStore.save(reviewSchedules)
+        return nextSchedule
     }
 
     override fun schedule(study: ScheduledStudy) {
@@ -79,11 +114,13 @@ class LocalStudyRepository(
             it.subject.equals(review.subject, ignoreCase = true)
         }
         val updatedSchedule = review.copy(dueDate = newDate)
+
         if (scheduleIndex == -1) {
             reviewSchedules.add(updatedSchedule)
         } else {
             reviewSchedules[scheduleIndex] = updatedSchedule
         }
+
         reviewScheduleStore.save(reviewSchedules)
     }
 
@@ -92,12 +129,14 @@ class LocalStudyRepository(
         deletedStudyIds.add(study.id)
         studyDataStore.saveStudies(studyEntries)
         studyDataStore.saveDeletedStudyIds(deletedStudyIds)
+
         if (all().none { it.subject.equals(study.subject, ignoreCase = true) }) {
             val removedReview = reviewSchedules.removeAll {
                 it.subject.equals(study.subject, ignoreCase = true)
             }
             if (removedReview) reviewScheduleStore.save(reviewSchedules)
         }
+
     }
 
     override fun cancelScheduledStudy(study: ScheduledStudy) {

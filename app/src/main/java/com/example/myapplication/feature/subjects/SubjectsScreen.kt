@@ -158,6 +158,7 @@ fun SubjectsScreen(
             listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
         }.collect { lastVisibleIndex ->
             val totalItems = listState.layoutInfo.totalItemsCount
+
             if (
                 lastVisibleIndex != null &&
                 lastVisibleIndex >= totalItems - 2 &&
@@ -165,6 +166,7 @@ fun SubjectsScreen(
             ) {
                 loadedCount = (loadedCount + PAGE_SIZE).coerceAtMost(matchingItems.size)
             }
+
         }
     }
 
@@ -229,6 +231,7 @@ fun SubjectsScreen(
                     SubjectFilter.ON_TRACK to R.string.subject_filter_on_track,
                     SubjectFilter.DUE to R.string.subject_filter_due,
                     SubjectFilter.OVERDUE to R.string.subject_filter_overdue
+
                 ).forEach { (option, label) ->
                     FilterChip(
                         selected = subjectFilter == option,
@@ -236,6 +239,7 @@ fun SubjectsScreen(
                         label = { Text(stringResource(label)) }
                     )
                 }
+
             }
         }
 
@@ -250,6 +254,7 @@ fun SubjectsScreen(
                     StudyGrouping.DAY to R.string.group_days,
                     StudyGrouping.WEEK to R.string.group_weeks,
                     StudyGrouping.MONTH to R.string.group_months
+
                 ).forEach { (option, label) ->
                     FilterChip(
                         selected = grouping == option,
@@ -257,6 +262,7 @@ fun SubjectsScreen(
                         label = { Text(stringResource(label)) }
                     )
                 }
+
             }
         }
 
@@ -265,6 +271,7 @@ fun SubjectsScreen(
                 EmptyState(R.string.subjects_empty)
             }
         } else {
+
             visibleGroups.forEach { (periodKey, items) ->
                 item(key = "header_$periodKey") {
                     Text(
@@ -307,6 +314,7 @@ fun SubjectsScreen(
                     )
                 }
             }
+
         }
 
         item {
@@ -348,6 +356,7 @@ private fun buildSubjectListItems(
         val existingIndex = items.indexOfFirst {
             it.periodKey == periodKey && it.subject.equals(subject, ignoreCase = true)
         }
+
         if (existingIndex >= 0) {
             items[existingIndex] = items[existingIndex].copy(
                 isInProgress = true,
@@ -368,6 +377,7 @@ private fun buildSubjectListItems(
                 )
             )
         }
+
     }
     return items
 }
@@ -456,6 +466,7 @@ private fun SubjectRow(
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis)
+
                     if (isInProgress) {
                         Text(
                             text = stringResource(
@@ -475,8 +486,10 @@ private fun SubjectRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
                 }
             }
+
             if (!isInProgress || totalMinutes > 0) {
                 Text(
                     text = stringResource(R.string.calendar_study_duration, totalMinutes),
@@ -485,6 +498,7 @@ private fun SubjectRow(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+
             Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
             Box(
                 Modifier

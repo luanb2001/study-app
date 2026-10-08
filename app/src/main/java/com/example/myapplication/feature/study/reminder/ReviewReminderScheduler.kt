@@ -24,9 +24,11 @@ object ReviewReminderScheduler {
             set(Calendar.MINUTE, REMINDER_MINUTE)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
+
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
+
         }
 
         alarmManager.setAndAllowWhileIdle(

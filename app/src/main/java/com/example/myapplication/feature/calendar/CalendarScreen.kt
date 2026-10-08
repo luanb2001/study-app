@@ -216,6 +216,7 @@ fun CalendarScreen(
                 }
             )
         }
+
     }
 }
 
@@ -253,12 +254,14 @@ private fun CalendarSelectedDayCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
+
                 studies.forEach { study ->
                     CalendarStudyEntryRow(
                         study = study,
                         onDelete = { onDeleteStudy(study) }
                     )
                 }
+
             }
 
             if (scheduledStudies.isNotEmpty()) {
@@ -266,12 +269,14 @@ private fun CalendarSelectedDayCard(
                     title = R.string.scheduled_studies,
                     color = MaterialTheme.colorScheme.secondary
                 )
+
                 scheduledStudies.forEach { study ->
                     ScheduledStudyRow(
                         study = study,
                         onCancel = { onCancelScheduledStudy(study) }
                     )
                 }
+
             }
 
             if (reviews.isNotEmpty()) {
@@ -279,13 +284,16 @@ private fun CalendarSelectedDayCard(
                     title = R.string.calendar_scheduled_reviews,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 reviews.forEach { review ->
                     ReviewScheduleRow(
                         review = review,
                         onReschedule = { date -> onRescheduleReview(review, date) }
                     )
                 }
+
             }
+
         }
     }
 }
@@ -463,6 +471,7 @@ private fun CalendarMonthGrid(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+
             weekdays.forEach { weekday ->
                 Text(
                     text = weekday,
@@ -472,6 +481,7 @@ private fun CalendarMonthGrid(
                     textAlign = TextAlign.Center
                 )
             }
+
         }
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
@@ -483,6 +493,7 @@ private fun CalendarMonthGrid(
             ) {
                 repeat(7) { weekday ->
                     val dayNumber = week * 7 + weekday - leadingDays + 1
+
                     if (dayNumber in 1..month.lengthOfMonth()) {
                         val date = month.withDayOfMonth(dayNumber)
                         CalendarDay(
@@ -498,6 +509,7 @@ private fun CalendarMonthGrid(
                     } else {
                         Spacer(modifier = Modifier.weight(1f).height(54.dp))
                     }
+
                 }
             }
 
@@ -539,6 +551,7 @@ private fun CalendarDay(
                 shape = shape
             )
             .then(
+
                 if (isToday || isSelected) {
                     Modifier.border(
                         BorderStroke(
@@ -550,6 +563,7 @@ private fun CalendarDay(
                 } else {
                     Modifier
                 }
+
             )
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -687,6 +701,7 @@ private fun ReviewScheduleRow(
             DatePicker(state = datePickerState, title = null)
         }
     }
+
 }
 
 private object FutureReviewDates : androidx.compose.material3.SelectableDates {

@@ -39,6 +39,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.feature.onboarding.OnboardingScreen
 import com.example.myapplication.feature.pomodoro.PomodoroPictureInPictureScreen
 import com.example.myapplication.feature.study.LocalStudyRepository
+import com.example.myapplication.feature.study.MockFlashcardGenerator
 import com.example.myapplication.feature.study.StudyRepository
 import com.example.myapplication.feature.study.reminder.ReviewReminderScheduler
 import com.example.myapplication.navigation.AppNavigation
@@ -92,6 +93,7 @@ fun StudyApp(
     }
 
     LaunchedEffect(hasCompletedOnboarding) {
+
         if (
             hasCompletedOnboarding &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -100,6 +102,7 @@ fun StudyApp(
         ) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+
     }
 
     val navController = rememberNavController()
@@ -108,23 +111,28 @@ fun StudyApp(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
+
             if (!isInPictureInPictureMode) {
                 BottomNavigation(navController)
             }
+
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             AppNavigation(
                 navController = navController,
                 studyRepository = studyRepository,
+                flashcardGenerator = MockFlashcardGenerator,
                 themeMode = themeMode,
                 onPomodoroRunningChange = onPomodoroRunningChange,
                 onThemeModeChange = onThemeModeChange,
                 modifier = Modifier.fillMaxSize()
             )
+
             if (isInPictureInPictureMode) {
                 PomodoroPictureInPictureScreen(modifier = Modifier.fillMaxSize())
             }
+
         }
     }
 
@@ -139,6 +147,7 @@ fun StudyApp(
             }
         )
     }
+
 }
 
 @Composable
@@ -150,6 +159,7 @@ fun BottomNavigation(navController: NavHostController) {
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
+
         bottomNavigationDestinations.forEach { destination ->
             val isSelected = currentRoute == destination.route ||
                 (destination.route == Routes.SUBJECTS &&
@@ -179,6 +189,7 @@ fun BottomNavigation(navController: NavHostController) {
                 label = { Text(stringResource(destination.label)) }
             )
         }
+
     }
 }
 

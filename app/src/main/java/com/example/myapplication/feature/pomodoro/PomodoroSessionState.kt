@@ -25,7 +25,9 @@ data class PomodoroSessionState(
     val scheduledStudyId: String
 ) {
     fun currentRemainingSeconds(nowElapsedRealtime: Long = SystemClock.elapsedRealtime()): Int {
+
         if (!isRunning) return remainingSeconds
+
         return ((deadlineElapsedRealtime - nowElapsedRealtime + 999L) / 1_000L)
             .toInt()
             .coerceAtLeast(0)

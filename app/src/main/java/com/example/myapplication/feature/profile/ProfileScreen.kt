@@ -273,6 +273,7 @@ fun ProfileScreen(
                         AppThemeMode.LIGHT to R.string.profile_theme_light,
                         AppThemeMode.DARK to R.string.profile_theme_dark,
                         AppThemeMode.SYSTEM to R.string.profile_theme_system
+
                     ).forEach { (mode, label) ->
                         Card(
                             onClick = {
@@ -308,6 +309,7 @@ fun ProfileScreen(
                             }
                         }
                     }
+
                 }
             },
             confirmButton = {
@@ -357,6 +359,7 @@ fun ProfileScreen(
             }
         )
     }
+
 }
 
 @Composable
@@ -459,6 +462,7 @@ private fun ActivityHeatmapCard(
                             null,
                             null
                         )
+
                         weekdayLabels.forEach { labelResource ->
                             Box(
                                 modifier = Modifier
@@ -475,6 +479,7 @@ private fun ActivityHeatmapCard(
                                 }
                             }
                         }
+
                     }
 
                     Column(
@@ -489,6 +494,7 @@ private fun ActivityHeatmapCard(
                                 )
                                 .height(16.dp)
                         ) {
+
                             for (monthNumber in 1..12) {
                                 val monthDate = calendarYear.atMonth(monthNumber).atDay(1)
                                 val firstMonthWeek =
@@ -515,6 +521,7 @@ private fun ActivityHeatmapCard(
                                     )
                                 }
                             }
+
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(contributionCellGap)) {
@@ -524,6 +531,7 @@ private fun ActivityHeatmapCard(
                                 ) {
                                     repeat(7) { dayIndex ->
                                         val date = firstWeek.plusDays(weekIndex * 7L + dayIndex)
+
                                         if (date.year == year) {
                                             Box(
                                                 modifier = Modifier.size(
@@ -546,6 +554,7 @@ private fun ActivityHeatmapCard(
                                                 )
                                             )
                                         }
+
                                     }
                                 }
                             }
@@ -576,6 +585,7 @@ private fun ActivityHeatmapCard(
                     )
                 }
             }
+
         }
     }
 }
@@ -693,11 +703,13 @@ private fun ContributionDay(date: LocalDate, sessions: Int, isToday: Boolean) {
             .size(contributionCellSize)
             .background(fill, shape)
             .then(
+
                 if (isToday) {
                     Modifier.border(1.dp, MaterialTheme.colorScheme.onBackground, shape)
                 } else {
                     Modifier
                 }
+
             )
             .semantics { contentDescription = description }
     )

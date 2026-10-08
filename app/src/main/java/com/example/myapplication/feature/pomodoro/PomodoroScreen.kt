@@ -177,6 +177,7 @@ fun PomodoroScreen(
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+
                 if (phase != PomodoroPhase.COMPLETED) {
                     Text(
                         text = stringResource(
@@ -188,6 +189,7 @@ fun PomodoroScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
             }
             IconButton(onClick = onBack, enabled = false) {
                 Icon(
@@ -208,6 +210,7 @@ fun PomodoroScreen(
                 onSummaryChange = { summary = it },
                 onAddMoreSessions = { startSession(session) },
                 onFinishStudy = {
+
                     if (!studyFinalized) {
                         PomodoroNotificationService.reset(context)
                         onCompleted(
@@ -217,6 +220,7 @@ fun PomodoroScreen(
                         )
                         studyFinalized = true
                     }
+
                 }
             )
         } else {
@@ -240,6 +244,7 @@ fun PomodoroScreen(
                         listOf(
                             PomodoroPhase.STUDY to R.string.pomodoro_study,
                             PomodoroPhase.BREAK to R.string.pomodoro_break
+
                         ).forEach { (phaseOption, labelResource) ->
                             val selected = phase == phaseOption
                             Surface(
@@ -264,6 +269,7 @@ fun PomodoroScreen(
                                 )
                             }
                         }
+
                     }
 
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -360,6 +366,7 @@ fun PomodoroScreen(
                         Button(
                             onClick = {
                                 val currentSessionState = session
+
                                 if (currentSessionState == null) {
                                     if (configurationValid) startSession()
                                 } else if (currentSessionState.isRunning) {
@@ -378,6 +385,7 @@ fun PomodoroScreen(
                                     session = resumed
                                     PomodoroNotificationService.resume(context)
                                 }
+
                             },
                             enabled = session != null || configurationValid,
                             modifier = Modifier.size(68.dp),
@@ -513,6 +521,7 @@ fun PomodoroScreen(
                 }
             }
         }
+
     }
 }
 
@@ -549,11 +558,13 @@ fun PomodoroPictureInPictureScreen(modifier: Modifier = Modifier) {
                 )
                 Text(
                     text = stringResource(
+
                         if (activeSession?.phase == PomodoroPhase.BREAK) {
                             R.string.pomodoro_break
                         } else {
                             R.string.pomodoro_study
                         }
+
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -624,11 +635,13 @@ private fun PomodoroCompletionCard(
             ) {
                 Text(
                     stringResource(
+
                         if (studyFinalized) {
                             R.string.study_finalized
                         } else {
                             R.string.finish_study
                         }
+
                     )
                 )
             }

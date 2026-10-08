@@ -34,6 +34,7 @@ class PomodoroNotificationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
+
         if (action == ACTION_RESET) {
             timerJob?.cancel()
             PomodoroSessionStore.clear(this)
@@ -48,6 +49,7 @@ class PomodoroNotificationService : Service() {
             ACTION_RESUME -> resumeSession()
             else -> PomodoroSessionStore.load(this)
         }
+
         if (state == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(startId)
@@ -56,11 +58,13 @@ class PomodoroNotificationService : Service() {
 
         createNotificationChannel()
         startForegroundCompat(createNotification(state))
+
         if (state.isRunning && state.phase != PomodoroPhase.COMPLETED) {
             runTimer()
         } else {
             timerJob?.cancel()
         }
+
         return START_STICKY
     }
 
@@ -83,7 +87,9 @@ class PomodoroNotificationService : Service() {
 
     private fun resumeSession(): PomodoroSessionState? {
         val state = PomodoroSessionStore.load(this) ?: return null
+
         if (state.phase == PomodoroPhase.COMPLETED) return state
+
         val resumed = state.copy(
             isRunning = true,
             deadlineElapsedRealtime = SystemClock.elapsedRealtime() +
@@ -94,17 +100,21 @@ class PomodoroNotificationService : Service() {
     }
 
     private fun runTimer() {
+
         if (timerJob?.isActive == true) return
+
         timerJob = serviceScope.launch {
             while (isActive) {
                 delay(250L)
                 var state = PomodoroSessionStore.load(this@PomodoroNotificationService)
                     ?: break
+
                 if (!state.isRunning) break
 
                 while (state.isRunning && state.currentRemainingSeconds() == 0) {
                     val next = advancePhase(state)
                     PomodoroSessionStore.save(this@PomodoroNotificationService, next)
+
                     if (
                         next.phase != state.phase &&
                         next.phase != PomodoroPhase.COMPLETED
@@ -116,13 +126,16 @@ class PomodoroNotificationService : Service() {
                             )
                         )
                     }
+
                     state = next
+
                     if (state.phase == PomodoroPhase.COMPLETED) {
                         updateNotification(state)
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                         return@launch
                     }
+
                     updateNotification(state)
                 }
             }
@@ -137,6 +150,7 @@ class PomodoroNotificationService : Service() {
                     completedStudyMinutes = state.completedStudyMinutes + state.studyMinutes,
                     completedSessionCount = state.completedSessionCount + 1
                 )
+
                 if (state.currentSession >= state.sessionCount) {
                     completed.copy(
                         phase = PomodoroPhase.COMPLETED,
@@ -152,6 +166,7 @@ class PomodoroNotificationService : Service() {
                         deadlineElapsedRealtime = nextDeadline + state.breakMinutes * 60_000L
                     )
                 }
+
             }
             PomodoroPhase.BREAK -> state.copy(
                 phase = PomodoroPhase.STUDY,
@@ -168,6 +183,7 @@ class PomodoroNotificationService : Service() {
     }
 
     private fun startForegroundCompat(notification: Notification) {
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
@@ -177,6 +193,7 @@ class PomodoroNotificationService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+
     }
 
     @SuppressLint("NewApi")

@@ -60,18 +60,25 @@ class ReviewReminderReceiver : BroadcastReceiver() {
             scheduledCount.takeIf { scheduledStudies.isNotEmpty() }
         ).joinToString(context.getString(R.string.reminder_summary_separator))
         val notificationLines = buildList {
+
             if (dueReviews.isNotEmpty()) {
                 add(reviewCount)
+
                 dueReviews.map { it.subject }.distinct().forEach {
                     add(context.getString(R.string.review_reminder_subject, it))
                 }
+
             }
+
             if (scheduledStudies.isNotEmpty()) {
                 add(scheduledCount)
+
                 scheduledStudies.map { it.subject }.distinct().forEach {
                     add(context.getString(R.string.scheduled_reminder_subject, it))
                 }
+
             }
+
         }
         val notification = NotificationCompat.Builder(context, REVIEW_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)

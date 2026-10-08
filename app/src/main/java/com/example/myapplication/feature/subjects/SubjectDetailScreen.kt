@@ -156,9 +156,11 @@ fun SubjectDetailScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
                     if (entries.isEmpty()) {
                         EmptyState(R.string.subject_history_empty)
                     } else {
+
                         entries.forEach { entry ->
                             StudyHistoryRow(
                                 subject = subject,
@@ -168,7 +170,9 @@ fun SubjectDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
                         }
+
                     }
+
                 }
                 else -> ReviewCard(review)
             }
@@ -380,6 +384,7 @@ private fun StudyHistoryRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
                 if (entry.description.isNotBlank()) {
                     Text(
                         text = entry.description,
@@ -389,6 +394,7 @@ private fun StudyHistoryRow(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
             }
             IconButton(onClick = onDelete) {
                 Icon(

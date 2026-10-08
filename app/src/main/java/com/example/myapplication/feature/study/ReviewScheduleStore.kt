@@ -27,6 +27,7 @@ class ReviewScheduleStore(context: Context) {
 
     fun save(schedules: List<ReviewSchedule>) {
         val schedulesJson = JSONArray().apply {
+
             schedules.forEach { schedule ->
                 put(
                     JSONObject()
@@ -35,6 +36,7 @@ class ReviewScheduleStore(context: Context) {
                         .put(INTERVAL_INDEX_KEY, schedule.intervalIndex)
                 )
             }
+
         }
         preferences.edit()
             .putString(REVIEW_SCHEDULES_KEY, schedulesJson.toString())

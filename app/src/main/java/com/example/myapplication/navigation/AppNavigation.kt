@@ -29,9 +29,12 @@ import com.example.myapplication.feature.profile.ProfileScreen
 import com.example.myapplication.feature.study.StartStudyScreen
 import com.example.myapplication.feature.study.RegisterStudiedStudyScreen
 import com.example.myapplication.feature.study.ScheduleStudyScreen
-import com.example.myapplication.feature.study.ScheduledStudy
 import com.example.myapplication.feature.study.StudyEntry
 import com.example.myapplication.feature.study.StudyRepository
+import com.example.myapplication.feature.study.FlashcardGenerator
+import com.example.myapplication.feature.study.MockFlashcardGenerator
+import com.example.myapplication.feature.study.ReviewModeScreen
+import com.example.myapplication.feature.study.FlashcardsScreen
 import com.example.myapplication.feature.subjects.SubjectDetailScreen
 import com.example.myapplication.feature.subjects.SubjectsScreen
 import android.net.Uri
@@ -43,11 +46,49 @@ object Routes {
     const val CALENDAR = "calendar"
     const val SUBJECTS = "subjects"
     const val PROFILE = "profile"
-    const val SUBJECT_DETAIL = "subject/{subject}"
     const val START_STUDY = "start_study"
     const val REGISTER_STUDY = "register_study"
     const val SCHEDULE_STUDY = "schedule_study"
-    const val POMODORO = "pomodoro/{subject}?duration={duration}&breakDuration={breakDuration}&sessions={sessions}&isReview={isReview}&scheduledStudyId={scheduledStudyId}"
+    const val SUBJECT_ARGUMENT = "subject"
+    const val DURATION_ARGUMENT = "duration"
+    const val BREAK_DURATION_ARGUMENT = "breakDuration"
+    const val SESSIONS_ARGUMENT = "sessions"
+    const val IS_REVIEW_ARGUMENT = "isReview"
+    const val SCHEDULED_STUDY_ID_ARGUMENT = "scheduledStudyId"
+    const val SUBJECT_DETAIL_PREFIX = "subject/"
+    const val REVIEW_MODE_PREFIX = "review_mode/"
+    const val FLASHCARDS_PREFIX = "flashcards/"
+    const val POMODORO_PREFIX = "pomodoro/"
+    const val SUBJECT_DETAIL = "$SUBJECT_DETAIL_PREFIX{$SUBJECT_ARGUMENT}"
+    const val REVIEW_MODE = "$REVIEW_MODE_PREFIX{$SUBJECT_ARGUMENT}"
+    const val FLASHCARDS = "$FLASHCARDS_PREFIX{$SUBJECT_ARGUMENT}"
+    const val REGISTER_STUDY_WITH_SUBJECT = "$REGISTER_STUDY?$SUBJECT_ARGUMENT={$SUBJECT_ARGUMENT}"
+    const val SCHEDULE_STUDY_WITH_SUBJECT = "$SCHEDULE_STUDY?$SUBJECT_ARGUMENT={$SUBJECT_ARGUMENT}"
+    const val START_STUDY_WITH_SUBJECT = "$START_STUDY?$SUBJECT_ARGUMENT={$SUBJECT_ARGUMENT}"
+    const val POMODORO =
+        "$POMODORO_PREFIX{$SUBJECT_ARGUMENT}?$DURATION_ARGUMENT={$DURATION_ARGUMENT}" +
+            "&$BREAK_DURATION_ARGUMENT={$BREAK_DURATION_ARGUMENT}" +
+            "&$SESSIONS_ARGUMENT={$SESSIONS_ARGUMENT}" +
+            "&$IS_REVIEW_ARGUMENT={$IS_REVIEW_ARGUMENT}" +
+            "&$SCHEDULED_STUDY_ID_ARGUMENT={$SCHEDULED_STUDY_ID_ARGUMENT}"
+
+    fun subjectDetail(subject: String): String =
+        "$SUBJECT_DETAIL_PREFIX${Uri.encode(subject)}"
+
+    fun reviewMode(subject: String): String =
+        "$REVIEW_MODE_PREFIX${Uri.encode(subject)}"
+
+    fun flashcards(subject: String): String =
+        "$FLASHCARDS_PREFIX${Uri.encode(subject)}"
+
+    fun registerStudy(subject: String): String =
+        "$REGISTER_STUDY?$SUBJECT_ARGUMENT=${Uri.encode(subject)}"
+
+    fun scheduleStudy(subject: String): String =
+        "$SCHEDULE_STUDY?$SUBJECT_ARGUMENT=${Uri.encode(subject)}"
+
+    fun startStudy(subject: String): String =
+        "$START_STUDY?$SUBJECT_ARGUMENT=${Uri.encode(subject)}"
 }
 
 @Composable
@@ -57,7 +98,8 @@ fun AppNavigation(
     themeMode: AppThemeMode,
     onPomodoroRunningChange: (Boolean) -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    flashcardGenerator: FlashcardGenerator = MockFlashcardGenerator
 ) {
     val context = LocalContext.current
     var activePomodoro by remember(context) {
@@ -117,17 +159,8 @@ fun AppNavigation(
                 onScheduleStudy = {
                     navController.navigate(Routes.SCHEDULE_STUDY)
                 },
-                onStartPomodoro = { selectedSubject ->
-                    navigateToPomodoro(
-                        navController,
-                        context,
-                        newPomodoroRoute(
-                            subject = selectedSubject,
-                            studyMinutes = 25,
-                            sessionCount = 4,
-                            isReview = true
-                        )
-                    )
+                onStartReview = { selectedSubject ->
+                    navController.navigate(Routes.reviewMode(selectedSubject))
                 },
                 onStartScheduledStudy = { study ->
                     navigateToPomodoro(
@@ -165,6 +198,62 @@ fun AppNavigation(
             )
         }
 
+        composable(
+            route = Routes.REVIEW_MODE,
+            arguments = listOf(navArgument(Routes.SUBJECT_ARGUMENT) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val subject = backStackEntry.arguments
+                ?.getString(Routes.SUBJECT_ARGUMENT)
+                .orEmpty()
+            ReviewModeScreen(
+                subject = subject,
+                onBack = { navController.popBackStack() },
+                onStartFlashcards = {
+                    navController.navigate(Routes.flashcards(subject))
+                },
+                onStartPomodoro = {
+                    navigateToPomodoro(
+                        navController,
+                        context,
+                        newPomodoroRoute(
+                            subject = subject,
+                            studyMinutes = 25,
+                            sessionCount = 4,
+                            isReview = true
+                        )
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = Routes.FLASHCARDS,
+            arguments = listOf(navArgument(Routes.SUBJECT_ARGUMENT) {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val subject = backStackEntry.arguments
+                ?.getString(Routes.SUBJECT_ARGUMENT)
+                .orEmpty()
+            FlashcardsScreen(
+                subject = subject,
+                studies = studyRepository.forSubject(subject),
+                flashcardGenerator = flashcardGenerator,
+                onBack = { navController.popBackStack() },
+                onComplete = { difficulty ->
+                    studyRepository.completeFlashcardReview(subject, difficulty)
+                },
+                onFinish = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
         composable(Routes.PROFILE) {
             ProfileScreen(
                 studyRepository = studyRepository,
@@ -177,7 +266,7 @@ fun AppNavigation(
             SubjectsScreen(
                 studyRepository = studyRepository,
                 onOpenSubject = { subject ->
-                    navController.navigate("subject/${Uri.encode(subject)}")
+                    navController.navigate(Routes.subjectDetail(subject))
                 },
                 onStartStudy = {
                     navController.navigate(Routes.START_STUDY)
@@ -194,44 +283,44 @@ fun AppNavigation(
 
         composable(
             route = Routes.SUBJECT_DETAIL,
-            arguments = listOf(navArgument("subject") { type = NavType.StringType })
+            arguments = listOf(navArgument(Routes.SUBJECT_ARGUMENT) {
+                type = NavType.StringType
+            })
         ) { backStackEntry ->
-            val subject = backStackEntry.arguments?.getString("subject").orEmpty()
+            val subject = backStackEntry.arguments
+                ?.getString(Routes.SUBJECT_ARGUMENT)
+                .orEmpty()
             SubjectDetailScreen(
                 subject = subject,
                 studyRepository = studyRepository,
                 onBack = { navController.popBackStack() },
                 onStartStudy = {
-                    navController.navigate(
-                        "${Routes.START_STUDY}?subject=${Uri.encode(subject)}"
-                    )
+                    navController.navigate(Routes.startStudy(subject))
                 },
                 onRegisterStudy = {
-                    navController.navigate(
-                        "${Routes.REGISTER_STUDY}?subject=${Uri.encode(subject)}"
-                    )
+                    navController.navigate(Routes.registerStudy(subject))
                 },
                 onDeleteStudy = studyRepository::deleteStudy,
                 onScheduleStudy = {
-                    navController.navigate(
-                        "${Routes.SCHEDULE_STUDY}?subject=${Uri.encode(subject)}"
-                    )
+                    navController.navigate(Routes.scheduleStudy(subject))
                 },
                 canStartStudy = activePomodoro == null
             )
         }
 
         composable(
-            route = "${Routes.REGISTER_STUDY}?subject={subject}",
+            route = Routes.REGISTER_STUDY_WITH_SUBJECT,
             arguments = listOf(
-                navArgument("subject") {
+                navArgument(Routes.SUBJECT_ARGUMENT) {
                     type = NavType.StringType
                     defaultValue = ""
                 }
             )
         ) { backStackEntry ->
             RegisterStudiedStudyScreen(
-                initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
+                initialSubject = backStackEntry.arguments
+                    ?.getString(Routes.SUBJECT_ARGUMENT)
+                    .orEmpty(),
                 onBack = { navController.popBackStack() },
                 onRegisterStudy = { entry ->
                     studyRepository.recordStudy(entry)
@@ -241,9 +330,9 @@ fun AppNavigation(
         }
 
         composable(
-            route = "${Routes.SCHEDULE_STUDY}?subject={subject}",
+            route = Routes.SCHEDULE_STUDY_WITH_SUBJECT,
             arguments = listOf(
-                navArgument("subject") {
+                navArgument(Routes.SUBJECT_ARGUMENT) {
                     type = NavType.StringType
                     defaultValue = ""
                 }
@@ -251,7 +340,9 @@ fun AppNavigation(
         ) { backStackEntry ->
             ScheduleStudyScreen(
                 studyRepository = studyRepository,
-                initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
+                initialSubject = backStackEntry.arguments
+                    ?.getString(Routes.SUBJECT_ARGUMENT)
+                    .orEmpty(),
                 onBack = { navController.popBackStack() },
                 onSchedule = { study ->
                     studyRepository.schedule(study)
@@ -261,16 +352,18 @@ fun AppNavigation(
         }
 
         composable(
-            route = "${Routes.START_STUDY}?subject={subject}",
+            route = Routes.START_STUDY_WITH_SUBJECT,
             arguments = listOf(
-                navArgument("subject") {
+                navArgument(Routes.SUBJECT_ARGUMENT) {
                     type = NavType.StringType
                     defaultValue = ""
                 }
             )
         ) { backStackEntry ->
             StartStudyScreen(
-                initialSubject = backStackEntry.arguments?.getString("subject").orEmpty(),
+                initialSubject = backStackEntry.arguments
+                    ?.getString(Routes.SUBJECT_ARGUMENT)
+                    .orEmpty(),
                 onBack = { navController.popBackStack() },
                 onStartStudy = { subject, durationMinutes, breakMinutes, sessions ->
                     navigateToPomodoro(
@@ -291,38 +384,50 @@ fun AppNavigation(
         composable(
             route = Routes.POMODORO,
             arguments = listOf(
-                navArgument("subject") { type = NavType.StringType },
-                navArgument("duration") {
+                navArgument(Routes.SUBJECT_ARGUMENT) { type = NavType.StringType },
+                navArgument(Routes.DURATION_ARGUMENT) {
                     type = NavType.IntType
                     defaultValue = 25
                 },
-                navArgument("breakDuration") {
+                navArgument(Routes.BREAK_DURATION_ARGUMENT) {
                     type = NavType.IntType
                     defaultValue = 5
                 },
-                navArgument("sessions") {
+                navArgument(Routes.SESSIONS_ARGUMENT) {
                     type = NavType.IntType
                     defaultValue = 4
                 },
-                navArgument("isReview") {
+                navArgument(Routes.IS_REVIEW_ARGUMENT) {
                     type = NavType.BoolType
                     defaultValue = false
                 },
-                navArgument("scheduledStudyId") {
+                navArgument(Routes.SCHEDULED_STUDY_ID_ARGUMENT) {
                     type = NavType.StringType
                     defaultValue = ""
                 }
             )
         ) { backStackEntry ->
-            val subject = backStackEntry.arguments?.getString("subject").orEmpty()
-            val isReview = backStackEntry.arguments?.getBoolean("isReview") ?: false
+            val subject = backStackEntry.arguments
+                ?.getString(Routes.SUBJECT_ARGUMENT)
+                .orEmpty()
+            val isReview = backStackEntry.arguments
+                ?.getBoolean(Routes.IS_REVIEW_ARGUMENT)
+                ?: false
             val scheduledStudyId =
-                backStackEntry.arguments?.getString("scheduledStudyId").orEmpty()
+                backStackEntry.arguments
+                    ?.getString(Routes.SCHEDULED_STUDY_ID_ARGUMENT)
+                    .orEmpty()
             PomodoroScreen(
                 subject = subject,
-                initialStudyMinutes = backStackEntry.arguments?.getInt("duration") ?: 25,
-                initialBreakMinutes = backStackEntry.arguments?.getInt("breakDuration") ?: 5,
-                initialSessionCount = backStackEntry.arguments?.getInt("sessions") ?: 4,
+                initialStudyMinutes = backStackEntry.arguments
+                    ?.getInt(Routes.DURATION_ARGUMENT)
+                    ?: 25,
+                initialBreakMinutes = backStackEntry.arguments
+                    ?.getInt(Routes.BREAK_DURATION_ARGUMENT)
+                    ?: 5,
+                initialSessionCount = backStackEntry.arguments
+                    ?.getInt(Routes.SESSIONS_ARGUMENT)
+                    ?: 4,
                 isReview = isReview,
                 scheduledStudyId = scheduledStudyId,
                 onCompleted = { durationMinutes, sessions, summary ->
@@ -336,11 +441,13 @@ fun AppNavigation(
                         ),
                         isReview = isReview
                     )
+
                     if (scheduledStudyId.isNotEmpty()) {
                         studyRepository.scheduled()
                             .firstOrNull { it.id == scheduledStudyId }
                             ?.let(studyRepository::cancelScheduledStudy)
                     }
+
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.HOME) { inclusive = false }
                         launchSingleTop = true
@@ -362,15 +469,19 @@ private fun navigationDirection(initialRoute: String?, targetRoute: String?): In
 private fun routePosition(route: String?): Int = when {
     route == Routes.HOME -> 0
     route == Routes.CALENDAR -> 1
-    route == Routes.SUBJECTS || route?.startsWith("subject/") == true -> 2
+    route == Routes.SUBJECTS ||
+        route?.startsWith(Routes.SUBJECT_DETAIL_PREFIX) == true -> 2
     route == Routes.PROFILE -> 3
     else -> 0
 }
 
 private fun PomodoroSessionState.pomodoroRoute(): String =
-    "pomodoro/${Uri.encode(subject)}?duration=$studyMinutes" +
-        "&breakDuration=$breakMinutes&sessions=$sessionCount" +
-        "&isReview=$isReview&scheduledStudyId=${Uri.encode(scheduledStudyId)}"
+    "${Routes.POMODORO_PREFIX}${Uri.encode(subject)}?" +
+        "${Routes.DURATION_ARGUMENT}=$studyMinutes" +
+        "&${Routes.BREAK_DURATION_ARGUMENT}=$breakMinutes" +
+        "&${Routes.SESSIONS_ARGUMENT}=$sessionCount" +
+        "&${Routes.IS_REVIEW_ARGUMENT}=$isReview" +
+        "&${Routes.SCHEDULED_STUDY_ID_ARGUMENT}=${Uri.encode(scheduledStudyId)}"
 
 private fun newPomodoroRoute(
     subject: String,
@@ -380,13 +491,18 @@ private fun newPomodoroRoute(
     isReview: Boolean? = null,
     scheduledStudyId: String? = null
 ): String = buildString {
-    append("pomodoro/${Uri.encode(subject)}?duration=$studyMinutes")
-    breakMinutes?.let { append("&breakDuration=$it") }
-    append("&sessions=$sessionCount")
-    isReview?.let { append("&isReview=$it") }
+    append("${Routes.POMODORO_PREFIX}${Uri.encode(subject)}?")
+    append("${Routes.DURATION_ARGUMENT}=$studyMinutes")
+    breakMinutes?.let {
+        append("&${Routes.BREAK_DURATION_ARGUMENT}=$it")
+    }
+    append("&${Routes.SESSIONS_ARGUMENT}=$sessionCount")
+    isReview?.let { append("&${Routes.IS_REVIEW_ARGUMENT}=$it") }
     scheduledStudyId
         ?.takeIf { it.isNotBlank() }
-        ?.let { append("&scheduledStudyId=${Uri.encode(it)}") }
+        ?.let {
+            append("&${Routes.SCHEDULED_STUDY_ID_ARGUMENT}=${Uri.encode(it)}")
+        }
 }
 
 private fun navigateToPomodoro(

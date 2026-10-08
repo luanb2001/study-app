@@ -82,7 +82,7 @@ fun HomeScreen(
     studyRepository: StudyRepository,
     onStartStudy: () -> Unit = {},
     onScheduleStudy: () -> Unit = {},
-    onStartPomodoro: (String) -> Unit = {},
+    onStartReview: (String) -> Unit = {},
     onStartScheduledStudy: (ScheduledStudy) -> Unit = {},
     onContinuePomodoro: (PomodoroSessionState) -> Unit = {},
     canStartStudy: Boolean = true,
@@ -140,7 +140,7 @@ fun HomeScreen(
             reviews = reviews,
             scheduledStudies = upcomingStudies,
             activePomodoro = activePomodoro,
-            onStartPomodoro = onStartPomodoro,
+            onStartReview = onStartReview,
             onStartScheduledStudy = onStartScheduledStudy,
             onContinuePomodoro = onContinuePomodoro,
             canStartStudy = canStartStudy && activePomodoro == null
@@ -273,11 +273,13 @@ private fun buildHomePlanEntries(
                         sessionInProgressLabel(reviewSession)
                     } else {
                         stringResource(
+
                             if (review.dueDate.isBefore(today)) {
                                 R.string.overdue
                             } else {
                                 R.string.review_today
                             }
+
                         )
                     },
                     isOverdue = reviewSession == null && review.dueDate.isBefore(today),
@@ -316,6 +318,7 @@ private fun buildHomePlanEntries(
                 )
             )
         }
+
     }
 }
 
@@ -441,7 +444,7 @@ private fun HomePlan(
     reviews: List<ReviewSchedule>,
     scheduledStudies: List<ScheduledStudy>,
     activePomodoro: PomodoroSessionState?,
-    onStartPomodoro: (String) -> Unit,
+    onStartReview: (String) -> Unit,
     onStartScheduledStudy: (ScheduledStudy) -> Unit,
     onContinuePomodoro: (PomodoroSessionState) -> Unit,
     canStartStudy: Boolean
@@ -489,6 +492,7 @@ private fun HomePlan(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
+
             if (entries.isEmpty()) {
                 Text(
                     text = stringResource(R.string.plan_empty),
@@ -496,6 +500,7 @@ private fun HomePlan(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
+
                 entries.forEach { entry ->
                     val entryCanBeClicked = if (activePomodoro != null) {
                         entry.isInProgress
@@ -510,14 +515,16 @@ private fun HomePlan(
                                 entry.isInProgress && activePomodoro != null ->
                                     onContinuePomodoro(activePomodoro)
                                 entry.reviewSubject != null ->
-                                    onStartPomodoro(entry.reviewSubject)
+                                    onStartReview(entry.reviewSubject)
                                 entry.scheduledStudy != null ->
                                     onStartScheduledStudy(entry.scheduledStudy)
                             }
                         }
                     )
                 }
+
             }
+
         }
     }
 }
@@ -633,6 +640,7 @@ private fun ProgressSummary(
             )
         }
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
         if (summary.subjectCount == 0) {
             Text(
                 text = stringResource(R.string.progress_empty),
@@ -661,6 +669,7 @@ private fun ProgressSummary(
                 )
             }
         }
+
     }
 }
 

@@ -118,11 +118,13 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                     horizontalDrag += dragAmount
                                 },
                                 onDragEnd = {
+
                                     if (horizontalDrag <= -80f && currentStep < steps.lastIndex) {
                                         currentStep++
                                     } else if (horizontalDrag >= 80f && currentStep > 0) {
                                         currentStep--
                                     }
+
                                 }
                             )
                         }
@@ -167,11 +169,13 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     lastStep = steps.lastIndex,
                     onPrevious = { currentStep-- },
                     onNext = {
+
                         if (currentStep == steps.lastIndex) {
                             onFinish()
                         } else {
                             currentStep++
                         }
+
                     }
                 )
             }
@@ -299,6 +303,7 @@ private fun OnboardingNavigationControls(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
+
         if (currentStep > 0) {
             OutlinedButton(
                 onClick = onPrevious,
@@ -307,17 +312,20 @@ private fun OnboardingNavigationControls(
                 Text(stringResource(R.string.onboarding_previous))
             }
         }
+
         Button(
             onClick = onNext,
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 stringResource(
+
                     if (currentStep == lastStep) {
                         R.string.onboarding_start
                     } else {
                         R.string.onboarding_next
                     }
+
                 )
             )
         }

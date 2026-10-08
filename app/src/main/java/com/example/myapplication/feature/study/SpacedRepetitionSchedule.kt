@@ -13,4 +13,13 @@ object SpacedRepetitionSchedule {
 
     fun nextIntervalIndex(currentIndex: Int): Int =
         (currentIndex + 1).coerceAtMost(intervalsInDays.lastIndex)
+
+    fun intervalIndexAfterReview(
+        currentIndex: Int,
+        difficulty: ReviewDifficulty
+    ): Int = when (difficulty) {
+        ReviewDifficulty.AGAIN -> 0
+        ReviewDifficulty.HARD -> currentIndex.coerceIn(0, intervalsInDays.lastIndex)
+        ReviewDifficulty.EASY -> nextIntervalIndex(currentIndex.coerceAtLeast(-1))
+    }
 }

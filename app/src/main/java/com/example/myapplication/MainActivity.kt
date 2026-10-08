@@ -59,9 +59,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
+
         if (pomodoroRunning && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             enterPictureInPictureMode(pictureInPictureParams(autoEnter = false))
         }
+
     }
 
     override fun onPictureInPictureModeChanged(
@@ -74,18 +76,22 @@ class MainActivity : ComponentActivity() {
 
     private fun updatePomodoroRunning(isRunning: Boolean) {
         pomodoroRunning = isRunning
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             setPictureInPictureParams(pictureInPictureParams(autoEnter = isRunning))
         }
+
     }
 
     private fun pictureInPictureParams(autoEnter: Boolean): PictureInPictureParams =
         PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .apply {
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setAutoEnterEnabled(autoEnter)
                 }
+
             }
             .build()
 }

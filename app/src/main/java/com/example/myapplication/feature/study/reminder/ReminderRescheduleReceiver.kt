@@ -6,6 +6,7 @@ import android.content.Intent
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+
         if (
             intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_TIME_CHANGED &&
@@ -13,6 +14,7 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
         ) {
             return
         }
+
         ReviewReminderScheduler.scheduleDaily(context)
     }
 }

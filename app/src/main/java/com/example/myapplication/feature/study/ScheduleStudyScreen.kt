@@ -183,6 +183,7 @@ fun ScheduleStudyScreen(
                     label = { Text(stringResource(R.string.schedule_subject_prompt)) },
                     placeholder = { Text(stringResource(R.string.subject_example)) },
                     trailingIcon = {
+
                         if (existingSubjects.isNotEmpty()) {
                             IconButton(onClick = { showSubjects = true }) {
                                 Icon(
@@ -194,6 +195,7 @@ fun ScheduleStudyScreen(
                                 expanded = showSubjects,
                                 onDismissRequest = { showSubjects = false }
                             ) {
+
                                 existingSubjects.forEach { existingSubject ->
                                     DropdownMenuItem(
                                         text = { Text(existingSubject) },
@@ -203,8 +205,10 @@ fun ScheduleStudyScreen(
                                         }
                                     )
                                 }
+
                             }
                         }
+
                     },
                     supportingText = {
                         Text(stringResource(R.string.schedule_new_subject_hint))

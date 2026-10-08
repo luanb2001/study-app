@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import com.example.myapplication.feature.study.SpacedRepetitionSchedule
+import com.example.myapplication.feature.study.ReviewDifficulty
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
@@ -45,6 +46,31 @@ class SpacedRepetitionScheduleTest {
             SpacedRepetitionSchedule.intervalsInDays.lastIndex,
             SpacedRepetitionSchedule.nextIntervalIndex(
                 SpacedRepetitionSchedule.intervalsInDays.lastIndex
+            )
+        )
+    }
+
+    @Test
+    fun flashcardDifficultyAdjustsTheNextInterval() {
+        assertEquals(
+            0,
+            SpacedRepetitionSchedule.intervalIndexAfterReview(
+                currentIndex = 2,
+                difficulty = ReviewDifficulty.AGAIN
+            )
+        )
+        assertEquals(
+            2,
+            SpacedRepetitionSchedule.intervalIndexAfterReview(
+                currentIndex = 2,
+                difficulty = ReviewDifficulty.HARD
+            )
+        )
+        assertEquals(
+            3,
+            SpacedRepetitionSchedule.intervalIndexAfterReview(
+                currentIndex = 2,
+                difficulty = ReviewDifficulty.EASY
             )
         )
     }

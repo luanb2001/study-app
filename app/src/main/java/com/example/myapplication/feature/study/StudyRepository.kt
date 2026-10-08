@@ -29,6 +29,12 @@ data class ReviewSchedule(
     val intervalIndex: Int
 )
 
+enum class ReviewDifficulty {
+    AGAIN,
+    HARD,
+    EASY
+}
+
 data class StudyProgressSummary(
     val streakDays: Int,
     val monthlyStudyHours: Int,
@@ -62,6 +68,11 @@ interface StudyRepository {
 
     // Backend: POST /api/studies or POST /api/reviews/{reviewId}/complete
     fun recordStudy(entry: StudyEntry, isReview: Boolean = false)
+
+    fun completeFlashcardReview(
+        subject: String,
+        difficulty: ReviewDifficulty
+    ): ReviewSchedule
 
     // Backend: POST /api/studies/scheduled
     fun schedule(study: ScheduledStudy)

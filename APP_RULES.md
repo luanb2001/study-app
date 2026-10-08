@@ -9,7 +9,7 @@ O Study App ajuda a organizar assuntos, executar sessões Pomodoro, registrar es
 - O aplicativo é Android nativo, construído com Kotlin e Jetpack Compose.
 - A interface e os textos atuais estão em português.
 - A navegação principal contém **Início**, **Calendário**, **Assuntos** e **Perfil**.
-- Os dados são locais ao dispositivo, armazenados em `SharedPreferences`. Não há conta, API conectada, sincronização remota ou compartilhamento entre dispositivos implementado.
+- Os dados são locais ao dispositivo, armazenados em `SharedPreferences`. Não há conta, API conectada, sincronização remota ou compartilhamento entre dispositivos implementado. A geração de flashcards usa atualmente um mock assíncrono por trás de `FlashcardGenerator`, pronto para ser substituído por uma implementação de API.
 - A tela de onboarding aparece na primeira utilização. Sua conclusão ou opção **Pular** é salva localmente.
 - Os dados de demonstração existem no código, mas estão desativados (`Data.ENABLED = false`).
 
@@ -93,7 +93,11 @@ Cada assunto com estudo registrado tem, no máximo, um calendário de revisão. 
 
 O intervalo de 60 dias se repete indefinidamente. Ao concluir uma revisão, o aplicativo avança no intervalo da agenda existente. Para um assunto sem agenda anterior, ou para um registro não marcado como revisão, a agenda volta ao intervalo inicial de 1 dia.
 
-Uma revisão está pendente quando sua data é hoje ou anterior. Datas anteriores a hoje são exibidas como atrasadas; revisões vencendo hoje são exibidas como revisão do dia. O plano da tela **Início** ordena as revisões pela data de vencimento. Iniciar uma revisão por esse plano usa uma configuração Pomodoro padrão de 25/5 minutos e 4 sessões.
+Uma revisão está pendente quando sua data é hoje ou anterior. Datas anteriores a hoje são exibidas como atrasadas; revisões vencendo hoje são exibidas como revisão do dia. O plano da tela **Início** ordena as revisões pela data de vencimento.
+
+Ao iniciar uma revisão pelo **Início**, o usuário escolhe entre Pomodoro (25/5 minutos e 4 sessões) e flashcards. O fluxo de flashcards envia o assunto e os resumos não vazios do histórico para a interface assíncrona `FlashcardGenerator`; a implementação atual gera perguntas mockadas. O contrato recebe `FlashcardGenerationRequest` e devolve uma lista de `Flashcard`, permitindo substituir o mock por um cliente de API sem alterar a tela. A interface trata carregamento, falha e nova tentativa.
+
+Cada cartão mostra primeiro a pergunta; depois de revelar a resposta, o usuário avalia com **Errei**, **Difícil** ou **Fácil**. A avaliação mais difícil do ciclo define o próximo intervalo: **Errei** reinicia em 1 dia, **Difícil** mantém o intervalo atual e **Fácil** avança para o próximo (1, 7, 21 ou 60 dias). A conclusão atualiza o calendário sem criar um registro de estudo fictício.
 
 No **Calendário**, uma revisão pode ser reagendada para hoje ou uma data futura. Reagendar altera a data de vencimento, sem alterar o índice do intervalo.
 
