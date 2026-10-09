@@ -1,6 +1,7 @@
 *.iml
 .gradle
-/local.properties
+/.kotlin/
+/study-app-ui-android/local.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -9,7 +10,10 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/study-app-ui-android/build
+/study-app-ui-android/captures
+/study-app-ui-android/.externalNativeBuild
+/study-app-ui-android/.cxx
 /captures
 .externalNativeBuild
 .cxx
-local.properties
