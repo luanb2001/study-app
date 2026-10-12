@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public final class ApiModels {
+
     private ApiModels() {
     }
 

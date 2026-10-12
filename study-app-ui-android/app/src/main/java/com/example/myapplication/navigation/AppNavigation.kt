@@ -1,43 +1,43 @@
 package com.example.myapplication.navigation
 
-import com.example.myapplication.AppThemeMode
+import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavType
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
-import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.myapplication.feature.calendar.CalendarScreen
-import com.example.myapplication.feature.home.HomeScreen
-import com.example.myapplication.feature.pomodoro.PomodoroScreen
-import com.example.myapplication.feature.pomodoro.PomodoroPhase
-import com.example.myapplication.feature.pomodoro.PomodoroSessionStore
-import com.example.myapplication.feature.pomodoro.PomodoroSessionState
-import com.example.myapplication.feature.profile.ProfileScreen
-import com.example.myapplication.feature.study.StartStudyScreen
-import com.example.myapplication.feature.study.RegisterStudiedStudyScreen
-import com.example.myapplication.feature.study.ScheduleStudyScreen
-import com.example.myapplication.feature.study.StudyEntry
-import com.example.myapplication.feature.study.StudyRepository
-import com.example.myapplication.feature.study.FlashcardGenerator
-import com.example.myapplication.feature.study.MockFlashcardGenerator
-import com.example.myapplication.feature.study.ReviewModeScreen
-import com.example.myapplication.feature.study.FlashcardsScreen
-import com.example.myapplication.feature.subjects.SubjectDetailScreen
-import com.example.myapplication.feature.subjects.SubjectsScreen
-import android.net.Uri
+import androidx.navigation.navArgument
+import com.example.myapplication.core.data.AppThemeMode
+import com.example.myapplication.feature.calendar.ui.CalendarScreen
+import com.example.myapplication.feature.home.ui.HomeScreen
+import com.example.myapplication.feature.pomodoro.data.local.PomodoroSessionStore
+import com.example.myapplication.feature.pomodoro.domain.model.PomodoroPhase
+import com.example.myapplication.feature.pomodoro.domain.model.PomodoroSessionState
+import com.example.myapplication.feature.pomodoro.ui.PomodoroScreen
+import com.example.myapplication.feature.profile.ui.ProfileScreen
+import com.example.myapplication.feature.study.data.mock.MockFlashcardGenerator
+import com.example.myapplication.feature.study.domain.FlashcardGenerator
+import com.example.myapplication.feature.study.domain.model.StudyEntry
+import com.example.myapplication.feature.study.domain.repository.StudyRepository
+import com.example.myapplication.feature.study.ui.FlashcardsScreen
+import com.example.myapplication.feature.study.ui.RegisterStudiedStudyScreen
+import com.example.myapplication.feature.study.ui.ReviewModeScreen
+import com.example.myapplication.feature.study.ui.ScheduleStudyScreen
+import com.example.myapplication.feature.study.ui.StartStudyScreen
+import com.example.myapplication.feature.subjects.ui.SubjectDetailScreen
+import com.example.myapplication.feature.subjects.ui.SubjectsScreen
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 
@@ -98,6 +98,10 @@ fun AppNavigation(
     themeMode: AppThemeMode,
     onPomodoroRunningChange: (Boolean) -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
+    onSignOut: () -> Unit = {},
+    accountEmail: String? = null,
+    trialDaysRemaining: Int? = null,
+    onCreateAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
     flashcardGenerator: FlashcardGenerator = MockFlashcardGenerator
 ) {
@@ -258,7 +262,11 @@ fun AppNavigation(
             ProfileScreen(
                 studyRepository = studyRepository,
                 themeMode = themeMode,
-                onThemeModeChange = onThemeModeChange
+                onThemeModeChange = onThemeModeChange,
+                onSignOut = onSignOut,
+                accountEmail = accountEmail,
+                trialDaysRemaining = trialDaysRemaining,
+                onCreateAccount = onCreateAccount
             )
         }
 

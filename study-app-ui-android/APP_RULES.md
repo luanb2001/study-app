@@ -2,6 +2,44 @@
 
 Este documento descreve o comportamento implementado no aplicativo Android no estado atual do código. É uma referência das regras reais do produto, não uma especificação de funcionalidades futuras.
 
+## Convenções de código
+
+- Separe blocos de controle (`if`, `for`, `do`/`while` e `switch`/`when`) e
+  pipelines de `Stream` com uma linha em branco antes e depois do bloco ou da
+  expressão completa. Não quebre expressões condicionais usadas como argumento
+  ou valor de outra expressão.
+- Extraia métodos privados para dar nomes a etapas não triviais e reduzir
+  repetição. Extraia classes utilitárias sem estado compartilhado quando isso
+  deixar a responsabilidade mais clara.
+- Não declare classes dentro de outras classes, exceto quando o tipo for
+  pequeno e pertencer conceitualmente apenas à classe externa (por exemplo,
+  um estado interno que não faça sentido reutilizar).
+- Dê a dependências nomes derivados do tipo injetado: `studyDataRepository`,
+  `authenticationService`, `localStudyDataStore`. Evite nomes genéricos como
+  `repository`, `service` ou `store`.
+- Use `this` para acessar campos e propriedades da própria instância e ao chamar
+  seus métodos privados. Use `super` para acessar membros herdados e para chamar
+  a implementação do pai quando ela também precisar ser executada; não o use
+  para substituir uma implementação.
+- Nos argumentos padrão do construtor, use os parâmetros diretamente, pois a
+  instância ainda não está disponível nesse ponto.
+
+## Organização dos pacotes
+
+- Organize o código por feature e, dentro dela, por responsabilidade. Não
+  misture telas, contratos, persistência e implementações de demonstração no
+  mesmo pacote.
+- Use `domain/model` para entidades e estados de domínio e
+  `domain/repository` para contratos consumidos pelas telas.
+- Use `data/local` para SQLite e preferências, `data/remote` para clientes HTTP,
+  `data/sync` para sincronização e seus modelos de transporte, e `data/mock`
+  para implementações e dados de demonstração.
+- Use `ui` para telas e componentes pertencentes a uma feature. Componentes
+  visuais compartilhados ficam em `ui/components`; navegação fica em
+  `navigation`.
+- Mantenha integrações específicas do Android, como receivers, workers e
+  services, junto à camada `data` da feature responsável.
+
 ## 1. Visão geral
 
 O Study App ajuda a organizar assuntos, executar sessões Pomodoro, registrar estudos, planejar estudos futuros, acompanhar revisões espaçadas e consultar o progresso.
@@ -9,7 +47,14 @@ O Study App ajuda a organizar assuntos, executar sessões Pomodoro, registrar es
 - O aplicativo é Android nativo, construído com Kotlin e Jetpack Compose.
 - A interface e os textos atuais estão em português.
 - A navegação principal contém **Início**, **Calendário**, **Assuntos** e **Perfil**.
-- Os dados são locais ao dispositivo, armazenados em `SharedPreferences`. Não há conta, API conectada, sincronização remota ou compartilhamento entre dispositivos implementado. A geração de flashcards usa atualmente um mock assíncrono por trás de `FlashcardGenerator`, pronto para ser substituído por uma implementação de API.
+- O app pode ser usado sem conta nos primeiros 30 dias. Estudos, agendamentos e
+  revisões ficam no SQLite local e não são enviados à API durante esse período.
+  Criar uma conta ou entrar vincula os registros e a sessão Pomodoro local desse
+  aparelho à conta; os registros de estudo iniciam a sincronização. Depois do
+  prazo, é obrigatório autenticar; dados que não foram vinculados são apagados.
+  A geração de flashcards ainda usa um mock assíncrono por trás de
+  `FlashcardGenerator`.
+- A sincronização é offline-first; conflitos de versão são apresentados para escolha explícita entre a versão do servidor e a do dispositivo. Consulte o [ADR 0001](../docs/architecture/0001-offline-first-and-user-data.md).
 - A tela de onboarding aparece na primeira utilização. Sua conclusão ou opção **Pular** é salva localmente.
 - Os dados de demonstração existem no código, mas estão desativados (`Data.ENABLED = false`).
 
@@ -74,7 +119,7 @@ Resetar antes de finalizar descarta o progresso ainda não registrado. Estudos p
 
 ### Sessão retomada e origem
 
-O estado do Pomodoro (inclusive fase, tempo restante, totais acumulados e origem) é salvo separadamente dos registros de estudo e restaurado ao reabrir o aplicativo.
+O estado do Pomodoro (inclusive fase, tempo restante, totais acumulados e origem) é salvo separadamente dos registros de estudo e restaurado ao reabrir o aplicativo. Antes da conta ele pertence à partição do aparelho; ao autenticar, é movido para a partição local da conta e permanece associado a ela ao sair. Ele não é sincronizado com outros aparelhos porque usa o relógio monotônico do dispositivo.
 
 - Um estudo livre não é marcado como revisão.
 - Uma revisão iniciada pelo plano da tela **Início** é marcada como revisão.
@@ -154,11 +199,60 @@ O cronômetro Pomodoro usa uma notificação contínua separada, que indica a fa
 
 ## 11. Persistência e limites atuais
 
-Os estudos, agendamentos, revisões e identificadores de registros removidos são gravados localmente em `SharedPreferences`, com listas serializadas em JSON. O estado Pomodoro usa outro arquivo local de preferências. A conclusão do onboarding também fica salva no armazenamento de preferências do app.
+Estudos, agendamentos, revisões, versões de sincronização, conflitos e fila de
+alterações são armazenados em SQLite. Na primeira inicialização após a
+atualização, estudos, agendamentos e revisões do armazenamento JSON anterior
+são importados. O identificador local usa o Android ID, disponível sem
+permissão de telefone e limitado ao escopo do app/assinatura/usuário; se não
+estiver disponível, é gerado um UUID local. Ele não é enviado ao backend. A
+partição local por aparelho mantém dados isolados antes da conta.
 
-Não há sincronização remota nem recuperação de dados por conta. Remover os dados do aplicativo ou desinstalá-lo pode apagar as informações locais, conforme as regras de backup do Android. As rotas/endpoints citados nos comentários da interface `StudyRepository` são referências para um backend futuro; não representam comunicação de rede disponível atualmente.
+O período começa no primeiro uso e dura 30 dias corridos. Durante o período,
+alterações são apenas locais; ao criar conta ou entrar, o app move os registros
+da partição deste aparelho para a conta e gera operações de sincronização a
+partir do estado atual. A sessão Pomodoro em andamento também passa para a
+partição local da conta. Um trabalho do Android agenda a limpeza no vencimento,
+e o app também limpa os dados ao voltar a abrir depois do prazo. Sem conta no
+vencimento, estudos, agendamentos, revisões, fila e sessão Pomodoro ainda não
+vinculados são apagados. A tela de conta bloqueia o uso até concluir
+cadastro/verificação ou entrar em uma conta.
 
-## 12. Configuração técnica do aplicativo
+A sessão da conta, incluindo o refresh token, é cifrada com AES-GCM usando uma
+chave do Android Keystore e excluída das regras de backup/transferência. O
+access token expira em 15 minutos e o app renova a sessão em segundo plano com
+rotação do refresh token, válido por 30 dias. Ao sair, as credenciais locais da
+conta são removidas e a revogação remota do refresh token é solicitada. A sessão Pomodoro continua
+armazenada na partição local da conta, mas não é sincronizada com outros
+aparelhos. Flashcards ainda usam um mock. O app não implementa compartilhamento
+entre contas.
+Sessões gravadas por versões anteriores, sem refresh token, exigem novo login;
+contas antigas também devem concluir a verificação de e-mail.
+
+Cadastro exige verificação do e-mail por código; a tela de conta também permite
+reenviar o código e recuperar a senha com um código enviado ao endereço
+cadastrado. Códigos expiram em 15 minutos. Esquecer ou perder o refresh token
+exige novo login.
+
+O endereço da API em debug é `http://10.0.2.2:8080` (emulador Android). Para
+release, configure a propriedade Gradle `studyAppApiBaseUrl` com a URL HTTPS do
+backend. O manifesto permite HTTP sem TLS apenas no build debug. A identidade e
+o início do período ficam em preferências excluídas de backup, assim como o
+banco local para evitar levar dados vinculados a outro aparelho. Limpar dados
+ou reinstalar pode reiniciar o período; o prazo local não é uma prova
+antifraude, pois pode ser afetado por alterações no relógio ou reinstalação.
+
+## 12. Arquitetura de dados implementada
+
+Antes de criar conta, o SQLite atende à interface e o backend não recebe
+registros. Depois do vínculo, o backend autenticado é o registro persistente
+por conta e sincroniza dispositivos da mesma pessoa. O protocolo usa fila
+local, versões por registro, cursor incremental, operações idempotentes e
+tombstones. Se a versão-base divergir, o app compara os dois payloads e aguarda
+a escolha do usuário, sem sobrescrever silenciosamente nenhuma versão.
+Consulte o racional e as consequências no
+[ADR 0001](../docs/architecture/0001-offline-first-and-user-data.md).
+
+## 13. Configuração técnica do aplicativo
 
 - `applicationId`: `com.example.myapplication`
 - Versão declarada: `1.0` (`versionCode` 1)

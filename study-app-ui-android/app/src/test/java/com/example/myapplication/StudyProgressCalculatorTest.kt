@@ -1,9 +1,9 @@
 package com.example.myapplication
 
-import com.example.myapplication.feature.study.StudyProgressCalculator
+import com.example.myapplication.feature.study.domain.StudyProgressCalculator
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDate
 
 class StudyProgressCalculatorTest {
     private val today = LocalDate.of(2026, 10, 1)

@@ -3,8 +3,8 @@ package com.example.myapplication
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.res.Configuration
-import android.os.Bundle
 import android.os.Build
+import android.os.Bundle
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,9 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.example.myapplication.AppThemeMode
-import com.example.myapplication.APP_PREFERENCES_NAME
-import com.example.myapplication.THEME_MODE_PREFERENCE_KEY
+import com.example.myapplication.core.data.APP_PREFERENCES_NAME
+import com.example.myapplication.core.data.AppThemeMode
+import com.example.myapplication.core.data.THEME_MODE_PREFERENCE_KEY
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val preferences = remember {
-                getSharedPreferences(APP_PREFERENCES_NAME, Context.MODE_PRIVATE)
+                super.getSharedPreferences(APP_PREFERENCES_NAME, Context.MODE_PRIVATE)
             }
             var themeMode by remember {
                 mutableStateOf(
@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 StudyApp(
                     themeMode = themeMode,
-                    isInPictureInPictureMode = pipMode,
+                    isInPictureInPictureMode = this@MainActivity.pipMode,
                     onPomodoroRunningChange = ::updatePomodoroRunning,
                     onThemeModeChange = { mode ->
                         preferences.edit()
@@ -60,8 +60,8 @@ class MainActivity : ComponentActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        if (pomodoroRunning && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            enterPictureInPictureMode(pictureInPictureParams(autoEnter = false))
+        if (this@MainActivity.pomodoroRunning && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            super.enterPictureInPictureMode(this.pictureInPictureParams(autoEnter = false))
         }
 
     }
@@ -71,14 +71,14 @@ class MainActivity : ComponentActivity() {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        pipMode = isInPictureInPictureMode
+        this@MainActivity.pipMode = isInPictureInPictureMode
     }
 
     private fun updatePomodoroRunning(isRunning: Boolean) {
-        pomodoroRunning = isRunning
+        this@MainActivity.pomodoroRunning = isRunning
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            setPictureInPictureParams(pictureInPictureParams(autoEnter = isRunning))
+            super.setPictureInPictureParams(this.pictureInPictureParams(autoEnter = isRunning))
         }
 
     }

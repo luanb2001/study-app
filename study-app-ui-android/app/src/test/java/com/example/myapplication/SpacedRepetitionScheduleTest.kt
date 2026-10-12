@@ -1,10 +1,10 @@
 package com.example.myapplication
 
-import com.example.myapplication.feature.study.SpacedRepetitionSchedule
-import com.example.myapplication.feature.study.ReviewDifficulty
+import com.example.myapplication.feature.study.domain.SpacedRepetitionSchedule
+import com.example.myapplication.feature.study.domain.model.ReviewDifficulty
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDate
 
 class SpacedRepetitionScheduleTest {
     @Test

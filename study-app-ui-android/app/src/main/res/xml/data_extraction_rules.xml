@@ -5,15 +5,17 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="study_app_account_session.xml" />
+        <exclude domain="sharedpref" path="study_app_installation.xml" />
+        <exclude domain="sharedpref" path="study_app_trial.xml" />
+        <exclude domain="sharedpref" path="pomodoro_session.xml" />
+        <exclude domain="database" path="study_app.db" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="study_app_account_session.xml" />
+        <exclude domain="sharedpref" path="study_app_installation.xml" />
+        <exclude domain="sharedpref" path="study_app_trial.xml" />
+        <exclude domain="sharedpref" path="pomodoro_session.xml" />
+        <exclude domain="database" path="study_app.db" />
     </device-transfer>
-    -->
 </data-extraction-rules>
