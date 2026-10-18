@@ -198,6 +198,50 @@ class StudyApiIntegrationTest {
     }
 
     @Test
+    void resendsVerificationAndRejectsInvalidAuthenticationRequests() throws Exception {
+        String email = UUID.randomUUID() + "@study.test";
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new AccountRequest(email, "correct-horse-battery"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new EmailRequest(email))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""{"email":"not-an-email","password":"short"}"""))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""{"email":"person@study.test","code":"123"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void logoutRevokesRefreshToken() throws Exception {
+        String email = UUID.randomUUID() + "@study.test";
+        String session = registerAndVerify(email, "correct-horse-battery");
+        String refreshToken = objectMapper.readTree(session).get("refreshToken").asText();
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshRequest(refreshToken))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void rotatesRefreshTokensAndPasswordResetRevokesPreviousSessions() throws Exception {
         String email = UUID.randomUUID() + "@study.test";
         String password = "correct-horse-battery";
